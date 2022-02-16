@@ -1,0 +1,6 @@
+npm install -g
+
+// setup
+npm init -y 
+npm i typescript -g
+tsc --init

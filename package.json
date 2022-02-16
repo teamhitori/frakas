@@ -1,0 +1,36 @@
+{
+  "name": "frakas",
+  "version": "1.0.10",
+  "description": "Frakas the multiplayer framework",
+  "main": "build/app.js",
+  "types": "build/app.d.ts",
+  "files": [
+    "build/*.js",
+    "build/*.ts",
+    "build/*.map",
+    "build/*.tsx"
+  ],
+  "scripts": {
+    "build:api": "cd projects/api && npm run build",
+    "build:cli": "cd projects/cli && npm run build",
+    "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js",
+    "build": "npm run build:api && npm run build:cli && npm run build:pub_conf",
+    "compose": "node scripts/compose.js && cd ./out && npm i",
+    "pack": "cd ./out && npm publish --access public",
+    "all": "npm run build && npm run compose && npm run pack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teamhitori/frakas.git"
+  },
+  "keywords": [],
+  "author": "ReubenH",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/teamhitori/frakas/issues"
+  },
+  "bin": {
+    "frakas": "bin/frakas"
+  },
+  "homepage": "https://github.com/teamhitori/frakas#readme"
+}
