@@ -15,9 +15,11 @@
     "build:cli": "cd projects/cli && npm run build",
     "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js",
     "build": "npm run build:api && npm run build:cli && npm run build:pub_conf",
-    "compose": "node scripts/compose.js && cd ./out && npm i",
-    "pack": "cd ./out && npm publish --access public",
-    "all": "npm run build && npm run compose && npm run pack"
+    "compose": "node scripts/compose.js && cd ./build && node ../scripts/write-version.js ./version.json && npm i",
+    "pack": "cd ./build && npm publish --access public",
+    "local-install": "cd ./build && npm i -gf",
+    "all": "npm run build && npm run compose && npm run pack",
+    "local": "npm run build && npm run compose && npm run local-install"
   },
   "repository": {
     "type": "git",
@@ -32,5 +34,9 @@
   "bin": {
     "frakas": "bin/frakas"
   },
-  "homepage": "https://github.com/teamhitori/frakas#readme"
+  "homepage": "https://github.com/teamhitori/frakas#readme",
+  "dependencies": {
+    "frakas": "file:build",
+    "source-map-loader": "^3.0.1"
+  }
 }

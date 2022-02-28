@@ -4,3 +4,6 @@ npm install -g
 npm init -y 
 npm i typescript -g
 tsc --init
+mkdir src
+echo "console.log(""Hello World"")" >> src\index.ts
+npm i frakas -g

@@ -1,4 +1,6 @@
 
 export interface AppConfig {
-    entryPoint: string
+    "entryPoint": string,
+    "ws-port": number,
+    "port": number
 }

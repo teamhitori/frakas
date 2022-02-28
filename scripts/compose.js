@@ -1,7 +1,7 @@
 var fs = require('fs');
 
 var copyDir = require('./copy-dir');
-var outDir = './out';
+var outDir = './build';
 var projects = [
     './projects/api/build',
     './projects/cli/build',
