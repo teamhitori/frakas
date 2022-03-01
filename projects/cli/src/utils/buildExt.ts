@@ -2,11 +2,13 @@ import webpack, { Stats, WebpackError } from 'webpack';
 import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs'
+import yargs from 'yargs';
+
 
 // mine
 import { AppConfig } from './documents/config'
 
-export async function getConfig(): Promise<AppConfig> {
+export async function getConfig(argv: yargs.ArgumentsCamelCase<{}>): Promise<AppConfig> {
     var res: { [id: string]: any; } =
         {
             "ws-port": 2279,
@@ -14,11 +16,12 @@ export async function getConfig(): Promise<AppConfig> {
             "entryPoint": "./src/index.ts",
         }
 
-
     try {
 
-        if(fs.existsSync('frakas.json')){
-            let rawdata = fs.readFileSync('frakas.json');
+        var cwd = process.cwd();
+
+        if(fs.existsSync(path.resolve(cwd, 'frakas.json'))){
+            let rawdata = fs.readFileSync(path.resolve(cwd, 'frakas.json'));
 
             if(!rawdata) return <AppConfig> res;
 
@@ -33,13 +36,17 @@ export async function getConfig(): Promise<AppConfig> {
                 }
             }
 
-        } else {
-            console.log(chalk.yellow("config file frakas.json not found"))
         }
         
     } catch(ex){
         console.log(chalk.red(`${ex}`));
     }
+
+    // override commandline
+    if(argv.port) res.port = argv.port as number;
+    if(argv["ws-port"]) res['ws-port'] = argv["ws-port"] as number;
+    if(argv.entryPoint) res.entryPoint = argv.entryPoint as string;
+    if(argv.verbose) res.verbose = argv.verbose as boolean;
 
     return <AppConfig> res;
 }

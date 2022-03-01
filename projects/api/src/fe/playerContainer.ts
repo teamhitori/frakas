@@ -27,10 +27,12 @@ export class PlayerContainer {
 
     init() {
 
+        this._isGameActive = true;
+
         this._notifyPlayerEvent
             .pipe(bufferTime(100))
             .subscribe(playerEvent => {
-                if (this._isGameActive) {
+                if (this._isGameActive && playerEvent?.length) {
                     this._websocketService?.playerEventIn(playerEvent);
                 }
             });
@@ -39,10 +41,9 @@ export class PlayerContainer {
             .subscribe(
                 data => {
                     if (!this._playerEntered) return;
-                    var stateItems = JSON.parse(data)
-                    for (const state of stateItems) {
-                        this._onPublicEvent.next(state)
-                    }
+                    var state = JSON.parse(data)
+                    console.log("onPublicEvent", state);
+                    this._onPublicEvent.next(state)
                 },
                 err => {
 
@@ -59,7 +60,7 @@ export class PlayerContainer {
                 if (!this._playerEntered) {
                     this._playerEntered = true;
                     this._websocketService.enterGame().subscribe(message => {
-                        this._onPrivateEvent.next(JSON.parse(message));
+                        this._onPrivateEvent.next(message);
                     });
                 }
 
@@ -68,6 +69,8 @@ export class PlayerContainer {
                         data: state
                     }
                     this._notifyPlayerEvent.next(playerEvent);
+                } else {
+                    console.log("sendToBackend called but game not active")
                 }
             },
 
@@ -82,7 +85,7 @@ export class PlayerContainer {
             }
         });
 
-        this._isGameActive = true;
+        
     }
 
 }

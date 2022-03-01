@@ -1,26 +1,21 @@
 // theirs
 import { Observable } from 'rxjs';
 
-// mine
-//import { BeWebsocket } from './be/beWebsocket';
-//import { FeWebsocket } from './fe/feWebsocket';
-//import { PlayerContainer } from './fe/playerContainer';
-
-export interface PlayerEventContent {
+export interface PlayerEventContent<T> {
     playerPosition: number;
-    playerState: any;
+    playerState: T;
 }
 
 export interface IFrontendApi {
     sendToBackend(state: any): void;
-    onPrivateEvent(): Observable<any>;
-    onPublicEvent(): Observable<any>;
-    onGameStop(): Observable<any>;
+    onPrivateEvent<T>(): Observable<T>;
+    onPublicEvent<T>(): Observable<T>;
+    onGameStop<T>(): Observable<T>;
 }
 export interface IBackendApi {
-    sendToPlayer(playerEventContent: PlayerEventContent): void;
-    sendToAll(state: any): void;
-    onPlayerEvent(): Observable<PlayerEventContent>;
+    sendToPlayer<T>(playerEventContent: PlayerEventContent<T>): void;
+    sendToAll<T>(state: T): void;
+    onPlayerEvent<T>(): Observable<PlayerEventContent<T>>;
     onPlayerEnter(): Observable<number>;
     onPlayerExit(): Observable<number>;
     onGameStop(): Observable<void>;

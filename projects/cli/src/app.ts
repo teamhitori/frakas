@@ -5,12 +5,12 @@ import * as yargs from 'yargs'
 import path from 'path'
 import fs from 'fs';
 
-import { exec, spawn } from 'child_process'
+// mine
+import { serve } from './commands/serve';
+import { init } from './commands/init'
 
 // mine
-import { build, getConfig } from './utils/buildExt'
-
-declare const connectBackend: (backendApi: any) => void;
+import { getConfig } from './utils/buildExt'
 
 console.log(
     chalk.yellowBright(
@@ -28,86 +28,25 @@ console.log(
 );
 
 
-var runAsync = async () => {
+yargs
+    .usage("Usage: frakas serve")
+    .command("init", "Initialize Frakas", () => { }, async (argv) => {
 
-    const options = await yargs
-        .usage("Usage: frakas serve")
-        .command("serve", "Serve game instance using locally running backend server", () => { }, async (argv) => {
-            console.info(`start server on :${argv.port}`);
+        var appConfig = await getConfig(argv);
+        await init(appConfig);
+    })
+    .command("serve", "Serve game instance using locally running backend server", () => { }, async (argv) => {
 
-            console.log(chalk.blue("Build Started"));
-
-            var appConfig = await getConfig();
-            
-            if(argv.port) appConfig.port = argv.port as number;
-            if(argv["ws-port"]) appConfig['ws-port'] = argv["ws-port"] as number;
-            if(argv.entryPoint) appConfig.entryPoint = argv.entryPoint as string;
-
-            var cwd = process.cwd();
-            var entrypoint = path.resolve(cwd, appConfig.entryPoint);
-
-            console.log(`Entrypoint: ${entrypoint}`);
-
-            fs.rmSync("obj", {force: true, recursive: true});
-
-            await build(cwd, "web", entrypoint, argv.verbose);
-            await build(cwd, "node", entrypoint, argv.verbose);
-
-            const app = express();
-            var server = app.listen(appConfig.port);
-
-            var be = spawn("node", [path.resolve("obj", "node.bundle.js"), "--port", `${appConfig["ws-port"]}`], { cwd: cwd });
-
-            be.stdout.on("data", (data: any) => {
-                console.log(chalk.gray(data)); 
-            });
-
-            be.stderr.on("data", data => {
-                console.log(chalk.gray(data)); 
-            });
-    
-            be.on('error', (error) => {
-                console.log(chalk.red(error)); 
-            });
-    
-            be.on("close", async code => {
-                console.log(chalk.blue("Backend has exited")); 
-                server.close()
-            });
-
-            app.get('/', (req, res) => {
-                console.log("called /");
-                res.setHeader("Content-Type", "text/html");
-                res.send(`<!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-                    <title>Frakas Debugger</title>
-                </head>
-                <body>
-                  <input type="hidden" value="ws://localhost:${appConfig['ws-port']}/ws" id="ws-url" />
-                  <input type="hidden" value="${appConfig['ws-port']}" id="ws-port" />
-                  <div #canvasHolder class="cavas-holder-inner">
-                    <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
-                  </div>
-                  <script type="text/javascript" src="web.bundle.js"></script>
-                </body>
-                </html>`);
-            });
-
-            // -- Express
-
-            app.use(express.static('obj'));
-
-            console.log(chalk.blue(`listening on port http://localhost:${appConfig.port}`));
-        })
-        .argv;
-
-}
-
-runAsync()
+        var cwd = process.cwd();
+        if (fs.existsSync(path.resolve(cwd, 'frakas.json'))) {
+            console.log(chalk.green(`${path.resolve(cwd, 'frakas.json')} exists`));
+        } else {
+            console.log(chalk.yellow(`${path.resolve(cwd, 'frakas.json')} does not exist`));
+        }
+        var appConfig = await getConfig(argv);
+        await serve(__dirname, appConfig);
+    })
+    .argv;
 
 
 

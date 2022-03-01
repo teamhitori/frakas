@@ -96,7 +96,7 @@ export class BeWebsocket {
                                 case Topic.playerExit:
                                     this._playerExit(connectionId, doc);
                                     break;
-                                case Topic.playerEventIn:
+                                case Topic.playerEvent:
                                     this._playerEventIn(connectionId, doc);
                                     break;
                                 case Topic.metrics:
@@ -151,7 +151,7 @@ export class BeWebsocket {
                 .subscribe({
                     next: content => {
                         var contentStr = JSON.stringify(content);
-                        ws.send(JSON.stringify(<ISocketConnectedDocument>{ topic: Topic.gameLoop, content: contentStr }));
+                        ws.send(JSON.stringify(<ISocketConnectedDocument>{ topic: Topic.publicEvent, content: contentStr }));
 
                     },
                     error: ex => {
@@ -183,7 +183,7 @@ export class BeWebsocket {
                 .subscribe({
                     next: message => {
                         var contentStr = JSON.stringify(message.state);
-                        ws.send(JSON.stringify(<ISocketConnectedDocument>{ topic: Topic.playerEventOut, content: contentStr }));
+                        ws.send(JSON.stringify(<ISocketConnectedDocument>{ topic: Topic.privateEvent, content: contentStr }));
                     },
                     error: ex => {
                         console.log(ex);
@@ -260,6 +260,7 @@ export class BeWebsocket {
     private _playerEventIn(connectionId: string, request: ISocketConnectedDocument) {
         try {
 
+            console.log("_playerEventIn called", connectionId, request);
             this._container?.playerEventIn.call(this._container, connectionId, request.content);
 
         } catch (ex: any) {

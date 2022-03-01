@@ -10,7 +10,7 @@ export class FeWebsocket {
   private _queueEvent: ReplaySubject<ISocketConnectedDocument> = new ReplaySubject();
   private _playerEnterSubject: Subject<ISocketConnectedDocument> = new Subject();
   private _playerEventSubject: Subject<ISocketConnectedDocument> = new Subject();
-  private _gameLoopSubject: Subject<ISocketConnectedDocument> = new Subject();
+  private _publicEventSubject: Subject<ISocketConnectedDocument> = new Subject();
   private _metricsSubject: Subject<ISocketConnectedDocument> = new Subject();
 
   constructor(socketBase: string) {
@@ -46,17 +46,17 @@ export class FeWebsocket {
         case Topic.playerEnter:
           this._playerEnterSubject.next(doc);
           break;
-        case Topic.playerEventOut:
+        case Topic.privateEvent:
           this._playerEventSubject.next(doc);
           break;
-        case Topic.gameLoop:
-          this._gameLoopSubject.next(doc);
+        case Topic.publicEvent:
+          this._publicEventSubject.next(doc);
           break;
         case Topic.metrics:
           this._metricsSubject.next(doc);
           break;
         case Topic.gameEnd:
-          this._gameLoopSubject.complete();
+          this._publicEventSubject.complete();
           break;
       }
     });
@@ -93,7 +93,7 @@ export class FeWebsocket {
   public playerEventIn(data: any) {
 
     this._queueEvent.next(<ISocketConnectedDocument>{
-      topic: Topic.playerEventIn,
+      topic: Topic.playerEvent,
       content: JSON.stringify(data)
     });
 
@@ -101,11 +101,11 @@ export class FeWebsocket {
 
   public startGame(): Observable<string> {
     var subject = new Subject<string>();
-    this._gameLoopSubject = new Subject();
+    this._publicEventSubject = new Subject();
 
     setTimeout(async () => {
 
-      this._gameLoopSubject
+      this._publicEventSubject
         .pipe(map(event => {
           return event.content
         }))

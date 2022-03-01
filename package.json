@@ -11,8 +11,8 @@
     "build/*.tsx"
   ],
   "scripts": {
-    "build:api": "cd projects/api && npm run build",
-    "build:cli": "cd projects/cli && npm run build",
+    "build:api": "cd projects/api && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json",
+    "build:cli": "cd projects/cli && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json",
     "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js",
     "build": "npm run build:api && npm run build:cli && npm run build:pub_conf",
     "compose": "node scripts/compose.js && cd ./build && node ../scripts/write-version.js ./version.json && npm i",
@@ -36,7 +36,7 @@
   },
   "homepage": "https://github.com/teamhitori/frakas#readme",
   "dependencies": {
-    "frakas": "file:build",
-    "source-map-loader": "^3.0.1"
+    "frakas": "file:build"
+    
   }
 }

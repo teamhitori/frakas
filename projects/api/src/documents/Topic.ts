@@ -7,8 +7,8 @@ export enum Topic {
   destroyGame,
   playerEnter,
   playerExit,
-  playerEventIn,
-  playerEventOut,
-  gameLoop,
+  playerEvent,
+  privateEvent,
+  publicEvent,
   gameEnd
 }

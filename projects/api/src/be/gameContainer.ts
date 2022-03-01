@@ -19,7 +19,7 @@ export class GameContainer {
 
     private _gameCreated: boolean = false;
 
-    private _onPlayerEvent: Subject<PlayerEventContent> = new Subject();
+    private _onPlayerEvent: Subject<PlayerEventContent<any>> = new Subject();
     private _onGameLoop: Subject<any> = new Subject();
     private _onPlayerEnter: Subject<number> = new Subject();
     private _onPlayerExit: Subject<number> = new Subject();
@@ -32,7 +32,7 @@ export class GameContainer {
             try {
 
                 var backendApi = <IBackendApi>{
-                    sendToPlayer: (content: PlayerEventContent) => {
+                    sendToPlayer: (content: PlayerEventContent<any>) => {
                         for (let connectionId in this._playerList) {
                             if (this._playerList[connectionId] == content.playerPosition) {
                                 this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": content.playerState });
@@ -190,12 +190,12 @@ export class GameContainer {
         });
     }
 
-    public playerEventIn(connectionId: String, content: string) {
+    public playerEventIn(connectionId: string, content: string) {
         try {
 
-            this._playerEventQueue.push(<IConnectedUserDocument>{
-                connectionId: connectionId,
-                content: content
+            this._onPlayerEvent.next(<PlayerEventContent<any>>{
+                playerPosition: +this._playerList[connectionId],
+                playerState: JSON.parse(content)
             })
         } catch (ex) {
             console.log(ex);
