@@ -11,15 +11,15 @@
     "build/*.tsx"
   ],
   "scripts": {
-    "build:api": "cd projects/api && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json",
-    "build:cli": "cd projects/cli && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json",
-    "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js",
-    "build": "npm run build:api && npm run build:cli && npm run build:pub_conf",
-    "compose": "node scripts/compose.js && cd ./build && node ../scripts/write-version.js ./version.json && npm i",
-    "pack": "cd ./build && npm publish --access public",
-    "local-install": "cd ./build && npm i -gf",
-    "all": "npm run build && npm run compose && npm run pack",
-    "local": "npm run build && npm run compose && npm run local-install"
+    "build:api": "cd projects/api && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
+    "build:cli": "cd projects/cli && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
+    "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js && time /t",
+    "build": "npm run build:api && npm run build:cli && npm run build:pub_conf && time /t",
+    "compose": "node scripts/compose.js && cd ./build && node ../scripts/write-version.js ./version.json && npm i && time /t",
+    "pack": "cd ./build && npm publish --access public && time /t",
+    "local-install": "cd ./build && npm i -gf && time /t",
+    "all": "npm run build && npm run compose && npm run pack && time /t",
+    "local": "npm run build && npm run compose && npm run local-install && time /t"
   },
   "repository": {
     "type": "git",
@@ -37,6 +37,5 @@
   "homepage": "https://github.com/teamhitori/frakas#readme",
   "dependencies": {
     "frakas": "file:build"
-    
   }
 }

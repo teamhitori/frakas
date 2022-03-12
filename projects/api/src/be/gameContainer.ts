@@ -1,6 +1,5 @@
 
-import { interval, Observable, Subject } from 'rxjs';
-import { takeUntil, map, bufferTime, filter } from "rxjs/operators";
+import { Observable, Subject } from 'rxjs';
 import { IBackendApi, PlayerEventContent } from '../api';
 import { IConnectedUserDocument } from './IConnectedUserDocument';
 
@@ -13,10 +12,6 @@ export class GameContainer {
 
     private _playerList: { [id: string]: any; } = {};
     private _nextPos = 0;
-    private _newUserList: any[] = [];
-    private _exitedUserList: any[] = [];
-    private _playerEventQueue: IConnectedUserDocument[] = [];
-
     private _gameCreated: boolean = false;
 
     private _onPlayerEvent: Subject<PlayerEventContent<any>> = new Subject();
@@ -26,7 +21,7 @@ export class GameContainer {
     private _onGameStop: Subject<any> = new Subject()
     private _onGameStart: Subject<any> = new Subject()
 
-    public constructor(beCallback: (n: IBackendApi) => any){
+    public constructor(private _args: any, beCallback: (n: IBackendApi) => any){
         try {
 
             try {
@@ -77,14 +72,9 @@ export class GameContainer {
     }
 
     public startGame(contentIn: any) {
-
-
         if (!this._loopActive && this._gameCreated) {
 
-            this._playerEventQueue = [];
             try {
-                //this._executeUserFunction("startLogic", loggerstart, this._startLogic);
-                //this._backendLogic?.call(this._gameThis, require, loggerstart, this._scene, this._gameState);
                 this._onGameStart.next({});
             } catch (ex: any) {
 
@@ -116,7 +106,6 @@ export class GameContainer {
             if (this._loopActive) {
                 this._playerList = {};
                 this._nextPos = 0;
-                this._playerEventQueue = [];
                 this._loopActive = false;
 
                 resolve(true);
@@ -138,18 +127,18 @@ export class GameContainer {
                     if (connectionId == connectionIdIn) {
                         existingUser = true;
                         nextPos = this._playerList[connectionIdIn];
-                        console.log(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
+                        if(this._args.verbose) console.log(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
 
                     }
                 }
 
                 if (!existingUser) {
-                    console.log(`### NEW USER [${connectionIdIn}]: ${content}, pos: ${nextPos}`);
+                    if(this._args.verbose) console.log(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
                     this._nextPos++;
                 }
 
                 this._playerList[connectionIdIn] = nextPos;
-                this._newUserList.push(nextPos);
+                this._onPlayerEnter.next(nextPos);
 
                 resolve(JSON.stringify({ position: this._playerList[connectionIdIn] }));
 
@@ -169,7 +158,7 @@ export class GameContainer {
                 for (const connectionId in this._playerList) {
                     if (connectionId == connectionIdIn) {
 
-                        this._exitedUserList.push(this._playerList[connectionIdIn]);
+                        this._onPlayerExit.next(this._playerList[connectionIdIn]);
 
                         delete this._playerList[connectionIdIn];
 
@@ -192,11 +181,14 @@ export class GameContainer {
 
     public playerEventIn(connectionId: string, content: string) {
         try {
-
-            this._onPlayerEvent.next(<PlayerEventContent<any>>{
-                playerPosition: +this._playerList[connectionId],
-                playerState: JSON.parse(content)
-            })
+            //if(this._args.verbose) console.log(`playerEventIn connectionId: ${connectionId}, content: ${content}`)
+            var events = JSON.parse(content);
+            for (const event of events) {
+                this._onPlayerEvent.next(<PlayerEventContent<any>>{
+                    playerPosition: +this._playerList[connectionId],
+                    playerState: event.data
+                })
+            }
         } catch (ex) {
             console.log(ex);
         }

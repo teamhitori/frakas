@@ -2,6 +2,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 import * as http2 from 'http2';
 import { v4 as uuidv4 } from 'uuid';
 import { filter, Subscription } from "rxjs";
+import chalk from 'chalk';
 
 // mine
 import { ISocketConnectedDocument } from "../documents/ISocketConnectedDocument"
@@ -18,10 +19,10 @@ export class BeWebsocket {
     /**
      *
      */
-    constructor(port: number, beCallback: (n: IBackendApi) => any) {
+    constructor(private _args: any, beCallback: (n: IBackendApi) => any) {
 
-        this._port = port;
-        this._container = new GameContainer(beCallback);
+        this._port = _args.port;
+        this._container = new GameContainer(_args, beCallback);
         this._initWebsocket();
     }
 
@@ -31,26 +32,26 @@ export class BeWebsocket {
             const server = http2.createServer(() => { });
             const wss = new WebSocketServer({ port: this._port });
 
-            console.log(`Starting ws server on port ${this._port}`)
+            console.log(chalk.blue(`Starting ws server on port ${this._port}`));
 
             server.on('connect', (req, clientSocket, head) => {
                 // Connect to an origin server
-                console.log(`Connect event http://${req.url}`);
+                if(this._args.verbose) console.log(`Connect event http://${req.url}`);
             });
 
             server.on('stream', (stream, headers) => {
-                console.log("stream called");
+                if(this._args.verbose) console.log("stream called");
             });
 
             server.on('error', (err) => console.error(err));
 
-            server.on('upgrade', function upgrade(request, socket, head) {
+            server.on('upgrade', (request, socket, head) => {
 
-                console.log(`upgrade event`, request);
+                if(this._args.verbose) console.log(`upgrade event`, request);
 
-                wss.handleUpgrade(request, socket, head, function done(ws) {
+                wss.handleUpgrade(request, socket, head, (ws) => {
 
-                    console.log(`handleUpgrade event`, request);
+                    if(this._args.verbose) console.log(`handleUpgrade event`, request);
 
                     wss.emit('connection', ws, request);
                 });
@@ -65,7 +66,7 @@ export class BeWebsocket {
                     var gameLoopSub: Subscription | undefined = undefined;
                     var playerEventOutSub: Subscription | undefined = undefined;
 
-                    console.log(`new connectionId: ${connectionId}`);
+                    if(this._args.verbose) console.log(`new connectionId: ${connectionId}`);
 
                     ws.on('message', async (event) => {
                         try {
@@ -143,7 +144,7 @@ export class BeWebsocket {
 
     private _startGame(connectionId: string, request: ISocketConnectedDocument, ws: WebSocket): Subscription | undefined {
         try {
-            console.log(`startGame called. gamePrimaryName:${request.gamePrimaryName}, connectionId: ${connectionId}`);
+            if(this._args.verbose) console.log(`startGame called. gamePrimaryName:${request.gamePrimaryName}, connectionId: ${connectionId}`);
 
             this._container?.startGame.call(this._container, request);
 
@@ -159,7 +160,7 @@ export class BeWebsocket {
                         console.log(`Error Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     },
                     complete: () => {
-                        console.log(`Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
+                        if(this._args.verbose) console.log(`Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     }
                 });
 
@@ -173,7 +174,7 @@ export class BeWebsocket {
     private _startPlayerEvent(connectionId: string, request: ISocketConnectedDocument, ws: WebSocket): Subscription | undefined {
         try {
 
-            console.log(`startPlayerEvent called.  gamePrimaryName:${request.gamePrimaryName}, connectionId:${connectionId}`);
+            if(this._args.verbose) console.log(`startPlayerEvent called.  gamePrimaryName:${request.gamePrimaryName}, connectionId:${connectionId}`);
 
             return this._container?.sendToPlayerObservable.call(this._container)
                 .pipe(filter(message => {
@@ -202,7 +203,7 @@ export class BeWebsocket {
     private _destroyGame(callback: (material: boolean) => any) {
         try {
 
-            console.log(`destroyGame called`);
+            if(this._args.verbose) console.log(`destroyGame called`);
 
             this._container?.destroyGame.call(this._container)
                 .then(isMaterialDestroy => {
@@ -240,7 +241,7 @@ export class BeWebsocket {
 
     private _playerExit(connectionId: string, request: ISocketConnectedDocument) {
         try {
-            console.log(`userExit called. connectionId:${request?.connectionId}, gamePrimaryName:${request.gamePrimaryName}`);
+            if(this._args.verbose) console.log(`userExit called. connectionId:${request?.connectionId}, gamePrimaryName:${request.gamePrimaryName}`);
 
             this._container?.playerExit.call(
                 this._container,
@@ -260,7 +261,7 @@ export class BeWebsocket {
     private _playerEventIn(connectionId: string, request: ISocketConnectedDocument) {
         try {
 
-            console.log("_playerEventIn called", connectionId, request);
+            if(this._args.verbose) console.log("_playerEventIn called", connectionId, request);
             this._container?.playerEventIn.call(this._container, connectionId, request.content);
 
         } catch (ex: any) {

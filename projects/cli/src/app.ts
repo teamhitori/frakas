@@ -30,8 +30,8 @@ console.log(
 
 yargs
     .usage("Usage: frakas serve")
+    .option("verbose", { alias: "v", describe: "verbose logging", type: 'boolean' })
     .command("init", "Initialize Frakas", () => { }, async (argv) => {
-
         var appConfig = await getConfig(argv);
         await init(appConfig);
     })

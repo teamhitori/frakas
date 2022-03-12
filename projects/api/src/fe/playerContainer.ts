@@ -4,31 +4,28 @@ import { Subject } from 'rxjs';
 import { bufferTime } from 'rxjs/operators';
 import { IPlayerEventWrapper } from "../documents/IPlayerEventWrapper";
 
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'frakas/main.css'
 
 export class PlayerContainer {
 
     private _isGameActive = false;
     private _playerEntered = false;
-  
     private _onPrivateEvent: Subject<any> = new Subject();
     private _onPublicEvent: Subject<any> = new Subject();
     private _onGameStopEvent: Subject<any> = new Subject();
-
     private _notifyPlayerEvent: Subject<IPlayerEventWrapper> = new Subject<IPlayerEventWrapper>();
-
 
     constructor(
         private _websocketService: FeWebsocket,
         private _feCallback: (n: IFrontendApi) => any
     ) { 
-
         this.init();
     }
 
     init() {
 
         this._isGameActive = true;
-
         this._notifyPlayerEvent
             .pipe(bufferTime(100))
             .subscribe(playerEvent => {
@@ -42,7 +39,7 @@ export class PlayerContainer {
                 data => {
                     if (!this._playerEntered) return;
                     var state = JSON.parse(data)
-                    console.log("onPublicEvent", state);
+                    //console.log("onPublicEvent", state);
                     this._onPublicEvent.next(state)
                 },
                 err => {
@@ -55,12 +52,12 @@ export class PlayerContainer {
                 }
             );
 
-        this._feCallback(<IFrontendApi>{
+        this._feCallback({
             sendToBackend: (state: any) => {
                 if (!this._playerEntered) {
                     this._playerEntered = true;
                     this._websocketService.enterGame().subscribe(message => {
-                        this._onPrivateEvent.next(message);
+                        this._onPrivateEvent.next(JSON.parse(message));
                     });
                 }
 
