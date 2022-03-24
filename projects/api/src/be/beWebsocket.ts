@@ -16,9 +16,6 @@ export class BeWebsocket {
     private _container: GameContainer;
     private _port: number;
 
-    /**
-     *
-     */
     constructor(private _args: any, beCallback: (n: IBackendApi) => any) {
 
         this._port = _args.port;

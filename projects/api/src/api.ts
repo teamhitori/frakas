@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import { GameConfig } from './documents/gameConfig';
+import { GameConfig } from './documents/__gameConfig';
 
 export interface PlayerEventContent<T> {
     playerPosition: number;
@@ -23,20 +23,28 @@ export interface IBackendApi {
     onGameStart(): Observable<void>;
 }
 
-export function setFrontend(feCallback: (n: IFrontendApi) => any, gameConfig: GameConfig | undefined = undefined) {
+export function setFrontend(feCallback: (n: IFrontendApi) => any) {
 
     if (typeof window === 'undefined') return;
 
     document.addEventListener("DOMContentLoaded", function (event) {
 
-        if (gameConfig) _setupGameWindow(gameConfig)
-
         console.log("setFrontend called");
 
-        var el = document.getElementById('ws-url');
-        var wsUrl = (<HTMLInputElement>el)?.value;
+        var elUrl = document.getElementById('ws-url');
+        var wsUrl = (<HTMLInputElement>elUrl)?.value;
+
+        var elFill = document.getElementById('fill-screen');
+        var fill = (<HTMLInputElement>elFill)?.value == 'true';
+
+        var elRatio = document.getElementById('screen-ratio');
+        var ratio = +(<HTMLInputElement>elRatio)?.value;
 
         console.log(`ws-url:${wsUrl}`);
+        console.log(`fill-screen:${fill}`);
+        console.log(`screen-ratio:${ratio}`);
+
+        _setupGameWindow(<GameConfig>{fillScreen: fill, screenRatio: ratio});
 
         var { FeWebsocket } = require('./fe/feWebsocket');
         var { PlayerContainer } = require('./fe/playerContainer');

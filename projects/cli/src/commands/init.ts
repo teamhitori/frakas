@@ -1,9 +1,9 @@
 import chalk from 'chalk';
 import fs from 'fs';
 import { exec } from 'child_process'
-import { AppConfig } from '../documents/appConfig';
+import yargs from 'yargs';
 
-export async function init(appConfig: AppConfig) {
+export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
 
     var cwd = process.cwd();
 
@@ -12,15 +12,15 @@ export async function init(appConfig: AppConfig) {
         return new Promise(resolve => {
             exec(command, { cwd: cwd }, async (error, stdout, stderr) => {
                 if (error) {
-                    if (appConfig.verbose) console.log(chalk.yellow(`${error.message}`));
+                    if (argv.verbose) console.log(chalk.yellow(`${error.message}`));
                     //return;
                 }
                 if (stderr) {
-                    if (appConfig.verbose) console.log(chalk.yellow(`${stderr}`));
+                    if (argv.verbose) console.log(chalk.yellow(`${stderr}`));
                     //return;
                 }
 
-                if (appConfig.verbose) console.log(chalk.gray(`${stdout}`));
+                if (argv.verbose) console.log(chalk.gray(`${stdout}`));
 
                 resolve({});
             });

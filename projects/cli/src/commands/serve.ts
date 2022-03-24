@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import path from 'path'
 import fs from 'fs';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
+import yargs from 'yargs';
 import { v4 as uuidv4 } from 'uuid';
 
 // mine
@@ -10,27 +11,25 @@ import { build } from '../utils/buildExt'
 import { AppConfig } from '../documents/appConfig';
 
 
-export async function serve(root: string, appConfig: AppConfig) {
-    console.info(`start server on :${appConfig.port}`);
+export async function serve(appconfig: AppConfig, root: string, argv: yargs.ArgumentsCamelCase<{}>) {
+    console.info(`start server on :${argv.port}`);
 
     console.log(chalk.blue("Watch Started"));
 
     var cwd = process.cwd();
-    var entrypoint = path.resolve(cwd, appConfig.entryPoint);
+    var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
 
-    console.log(`Entrypoint: ${entrypoint}`);
+    console.log(`Entrypoint: ${entrypointPath}`);
 
     fs.rmSync("obj", { force: true, recursive: true });
 
-
-
     const app = express();
-    var server = app.listen(appConfig.port);
+    var server = app.listen(argv.port);
 
-    var verboseTag = appConfig.verbose ? "-v" : "";
+    var verboseTag = argv.verbose ? "-v" : "";
 
     var spawnBackend = () => {
-        var be = spawn("node", [path.resolve("obj", "node.bundle.main.js"), "--port", `${appConfig["ws-port"]}`, verboseTag], { cwd: cwd });
+        var be = spawn("node", [path.resolve("obj", "node.bundle.main.js"), "--port", `${argv["ws-port"]}`, verboseTag], { cwd: cwd });
 
         be.stdout.on("data", (data: any) => {
             console.log(chalk.gray(data));
@@ -101,9 +100,9 @@ export async function serve(root: string, appConfig: AppConfig) {
         }
     }
 
-    console.log(chalk.blue(`listening on port http://localhost:${appConfig.port}`));
+    console.log(chalk.blue(`listening on port http://localhost:${argv.port}`));
 
-    await build(cwd, "web", entrypoint, appConfig, () =>{
+    await build(appconfig, cwd, "web", argv, () =>{
 
     }, () => {
         sendRefresh()
@@ -111,7 +110,7 @@ export async function serve(root: string, appConfig: AppConfig) {
 
     var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
 
-    await build(cwd, "node", entrypoint, appConfig, () =>{
+    await build(appconfig, cwd, "node", argv, () =>{
         currentBe?.kill(9);
     }, () => {
         currentBe = spawnBackend();

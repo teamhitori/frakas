@@ -1,7 +1,7 @@
 import webpack, { RuleSetRule, Stats, WebpackError } from 'webpack';
 import chalk from 'chalk';
 import path from 'path';
-import fs from 'fs'
+
 import yargs from 'yargs';
 
 
@@ -11,52 +11,9 @@ import HtmlWebpackPlugin from 'html-webpack-plugin';
 import MiniCssExtractPlugin from "mini-css-extract-plugin"
 import { AppConfig } from '../documents/appConfig';
 
-export async function getConfig(argv: yargs.ArgumentsCamelCase<{}>): Promise<AppConfig> {
-    var res: { [id: string]: any; } =
-    {
-        "gameName": path.basename(path.resolve(process.cwd())),
-        "ws-port": 2279,
-        "port": 2280,
-        "entryPoint": "./src/index.ts",
-    }
 
-    try {
 
-        var cwd = process.cwd();
-
-        if (fs.existsSync(path.resolve(cwd, 'frakas.json'))) {
-            let rawdata = fs.readFileSync(path.resolve(cwd, 'frakas.json'));
-
-            if (!rawdata) return <AppConfig>res;
-
-            console.log("Found frakas.config, reading contents");
-
-            let config = JSON.parse(rawdata.toString('utf-8'))
-
-            for (const key in config) {
-                if (Object.prototype.hasOwnProperty.call(config, key)) {
-                    const element = config[key];
-                    res[key] = element;
-                }
-            }
-
-        }
-
-    } catch (ex) {
-        console.log(chalk.red(`${ex}`));
-    }
-
-    // override commandline
-    if (argv.gameName) res.gameName = argv.gameName as string;
-    if (argv.port) res.port = argv.port as number;
-    if (argv["ws-port"]) res['ws-port'] = argv["ws-port"] as number;
-    if (argv.entryPoint) res.entryPoint = argv.entryPoint as string;
-    if (argv.verbose) res.verbose = argv.verbose as boolean;
-
-    return <AppConfig>res;
-}
-
-export function build(cwd: string, target: string, entry: string, appConfig: AppConfig, callbackStart: () => void, callbackComplete: () => void) {
+export function build(config: AppConfig, cwd: string, target: string, argv: yargs.ArgumentsCamelCase<{}>, callbackStart: () => void, callbackComplete: (errors:boolean) => void) {
 
     var unresolved = true;
 
@@ -69,11 +26,13 @@ export function build(cwd: string, target: string, entry: string, appConfig: App
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="X-UA-Compatible" content="ie=edge">
-            <title>${appConfig.gameName}</title>
+            <title>${config.gameName}</title>
         </head>
         <body>
-          <input type="hidden" value="ws://localhost:${appConfig['ws-port']}/ws" id="ws-url" />
-          <input type="hidden" value="${appConfig['ws-port']}" id="ws-port" />
+          <input type="hidden" value="ws://localhost:${argv['ws-port']}/ws" id="ws-url" />
+          <input type="hidden" value="${argv['ws-port']}" id="ws-port" />
+          <input type="hidden" value="${config.fillScreen}" id="fill-screen" />
+          <input type="hidden" value="${config.screenRatio}" id="screen-ratio" />
           <div class="cavas-holder-inner" id="renderCanvas-holder">
             <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
           </div>
@@ -114,13 +73,13 @@ export function build(cwd: string, target: string, entry: string, appConfig: App
         }
     ];
 
-    console.log(`target: ${target}, entry: ${entry}`);
+    console.log(`target: ${target}, entry: ${config.entryPoint}`);
 
     var buildStart = Date.now();
     
     const compiler = webpack({
         target: target,
-        entry: [entry],
+        entry: [config.entryPoint],
         watch: true,
         module: {
             rules: rules
@@ -158,25 +117,29 @@ export function build(cwd: string, target: string, entry: string, appConfig: App
         plugins: plugins
     }, (err, stats) => {
 
-        if (appConfig.verbose && stats) console.log(stats)
+        if (argv.verbose && stats) console.log(stats)
 
         if (stats?.compilation.errors.length) {
-            console.log(chalk.yellow(`${target} build complete with errors in ${new Date(stats?.endTime - buildStart).getSeconds()} seconds [${new Date(stats?.endTime).toLocaleString()}] `));
+            console.log(chalk.yellow(`[${new Date(stats?.endTime).toLocaleString()}] Build complete: ${target} with errors in ${new Date(stats?.endTime - buildStart).getSeconds()} seconds`));
             console.log(stats?.compilation.errors);
+
+            callbackComplete(true);
         } else{
-            console.log(chalk.yellow(`${target} build complete with no errors in ${new Date(stats?.endTime - buildStart).getSeconds()} seconds ${target}.bundle.main.js [${new Date(stats?.endTime).toLocaleString()}] `));
+            console.log(chalk.yellow(`[${new Date(stats?.endTime).toLocaleString()}] Build complete: ${target} with no errors in ${new Date(stats?.endTime - buildStart).getSeconds()} seconds output obj/${target}.bundle.main.js [${new Date(stats?.endTime).toLocaleString()}] `));
+
+            callbackComplete(false);
         }
 
         if (unresolved) {
             unresolved = false;
         }
 
-        callbackComplete();
+        
     });
 
     compiler.hooks.watchRun.tap('watchRun', (context) => {
         buildStart = Date.now();
-        console.log(chalk.whiteBright(`Build started: ${target} [${new Date(buildStart).toLocaleString()}]`));
+        console.log(chalk.whiteBright(`[${new Date(buildStart).toLocaleString()}] Build started: ${target} `));
         
         callbackStart()
     });
@@ -186,7 +149,7 @@ export function build(cwd: string, target: string, entry: string, appConfig: App
 
     }, (err: Error | null | undefined, stats: Stats | undefined) => { // [Stats Object](#stats-object)
 
-        if (appConfig.verbose && stats) console.log(stats)
+        if (argv.verbose && stats) console.log(stats)
 
         if (stats?.compilation.errors.length) {
             console.log(chalk.yellow(stats?.compilation.errors));
