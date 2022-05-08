@@ -1,7 +1,8 @@
 import axios from "axios";
 import { getAccessToken } from "./login";
 import https from 'https';
-import { Console } from "console";
+import { getWebRoot } from "../utils/env";
+
 
 export async function listGames() {
 
@@ -13,7 +14,7 @@ export async function listGames() {
         rejectUnauthorized: false
     });
 
-    var games = await axios.get('https://localhost:8001/api/editorApi/get-all', { headers: { Authorization: `Bearer ${token}` }, httpsAgent: agent })
+    var games = await axios.get(`${getWebRoot()}/api/editorApi/get-all`, { headers: { Authorization: `Bearer ${token}` }, httpsAgent: agent })
         .then(function (response) {
             // handle success
             console.log(`Request Successful`);

@@ -4,8 +4,8 @@ import { Subject } from 'rxjs';
 import { bufferTime } from 'rxjs/operators';
 import { IPlayerEventWrapper } from "../documents/IPlayerEventWrapper";
 
-import 'bootstrap/dist/css/bootstrap.min.css';
-import 'frakas/main.css'
+// import 'bootstrap/dist/css/bootstrap.min.css';
+// import 'frakas/main.css'
 
 export class PlayerContainer {
 
@@ -24,6 +24,9 @@ export class PlayerContainer {
     }
 
     init() {
+
+        var elAssetsRoot = document.getElementById('assets-root');
+        var assetsRoot = (<HTMLInputElement>elAssetsRoot)?.value;
 
         this._isGameActive = true;
         this._notifyPlayerEvent
@@ -79,7 +82,8 @@ export class PlayerContainer {
             },
             onGameStop: () => {
                 return this._onGameStopEvent;
-            }
+            },
+            assetsRoot: assetsRoot
         });
 
         

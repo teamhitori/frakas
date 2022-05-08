@@ -1,21 +1,24 @@
 import path from "path";
 import fs from 'fs'
 import chalk from "chalk";
+import { fixGameName } from "../utils/ext";
+import { isDebug } from "../utils/env";
 
 export interface AppConfig {
     "gameName": string;
     "entryPoint": string;
     "fillScreen": boolean;
-    "screenRatio": number
+    "screenRatio": number;
+    "gameThumbnail": string;
 }
 
 export async function getConfig(): Promise<AppConfig> {
     var res: { [id: string]: any; } =
     {
-        "gameName": path.basename(path.resolve(process.cwd())),
+        "gameName": fixGameName(path.basename(path.resolve(process.cwd()))),
         "entryPoint": "./src/index.ts",
         "fillScreen": false,
-        "screenRatio": 1.75
+        "screenRatio": 1.75,
     }
 
     try {
@@ -29,7 +32,11 @@ export async function getConfig(): Promise<AppConfig> {
 
             console.log("Found frakas.config, reading contents");
 
-            let config = JSON.parse(rawdata.toString('utf-8'))
+            let config = JSON.parse(rawdata.toString('utf-8'));
+
+            if(isDebug()){
+                console.log(`frakas.config:`, config);
+            }
 
             for (const key in config) {
                 if (Object.prototype.hasOwnProperty.call(config, key)) {

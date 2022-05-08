@@ -1,17 +1,18 @@
-import express from 'express';
 import chalk from 'chalk';
 import path from 'path'
 import fs from 'fs';
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process'
-import yargs from 'yargs';
-import { v4 as uuidv4 } from 'uuid';
+import { ChildProcessWithoutNullStreams } from 'child_process'
 
 // mine
 import { build } from '../utils/buildExt'
 import { AppConfig } from '../documents/appConfig';
+import { args } from '../documents/args';
+import { startWeb } from '../utils/webExt';
+import { spawnBackend } from '../utils/runExt';
+import { buildAll } from './buildNew';
 
 
-export async function serve(appconfig: AppConfig, root: string, argv: yargs.ArgumentsCamelCase<{}>) {
+export async function serve(appconfig: AppConfig, root: string, argv: args) {
     console.info(`start server on :${argv.port}`);
 
     console.log(chalk.blue("Watch Started"));
@@ -23,96 +24,24 @@ export async function serve(appconfig: AppConfig, root: string, argv: yargs.Argu
 
     fs.rmSync("obj", { force: true, recursive: true });
 
-    const app = express();
-    var server = app.listen(argv.port);
+    // await build(appconfig, cwd, "web", argv, () => {
 
-    var verboseTag = argv.verbose ? "-v" : "";
+    // }, () => {
+    //     console.log(chalk.blue(`listening on port http://localhost:${argv.port}`));
+    // });
 
-    var spawnBackend = () => {
-        var be = spawn("node", [path.resolve("obj", "node.bundle.main.js"), "--port", `${argv["ws-port"]}`, verboseTag], { cwd: cwd });
+    // var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
 
-        be.stdout.on("data", (data: any) => {
-            console.log(chalk.gray(data));
-        });
+    // await build(appconfig, cwd, "node", argv, () => {
+    //     currentBe?.kill(9);
+    // }, () => {
+    //     currentBe = spawnBackend(appconfig, root, argv);
+    // });
 
-        be.stderr.on("data", data => {
-            console.log(chalk.gray(data));
-        });
+    await buildAll(appconfig, root, argv);
 
-        be.on('error', (error) => {
-            console.log(chalk.red(error));
-        });
+    spawnBackend(appconfig, root, argv);
 
-        be.on("close", async code => {
-            console.log(chalk.blue("Backend has stopped"));
-        });
-
-        return be;
-
-    }
-
-    app.use(express.static('public'));
-
-    app.get('/favicon.ico', function (req, res) {
-        res.sendFile(path.resolve(root, 'favicon.ico'));
-    });
-
-    var clients: { [name: string]: any } = {}
-
-    app.get('/subscribe', (req, res) => {
-        // send headers to keep connection alive
-        const headers = {
-            'Content-Type': 'text/event-stream',
-            'Connection': 'keep-alive',
-            'Cache-Control': 'no-cache'
-        };
-        res.writeHead(200, headers);
-
-        var clientId = uuidv4();
-
-        console.log(`Subscribe called by client: ${clientId}`);
-
-        // send client a simple response
-        res.write('you are subscribed');
-
-        
-
-        // store `res` of client to let us send events at will
-        clients[clientId] = res;
-
-        // listen for client 'close' requests
-        req.on('close', () => { delete clients[clientId] });
-    });
-
-    app.use(express.static('obj'));
-
-    // send refresh event (must start with 'data: ')
-    var sendRefresh = () => {
-
-        for (const key in clients) {
-            if (Object.prototype.hasOwnProperty.call(clients, key)) {
-                const client = clients[key];
-
-                console.log("Sending Refresh to client: ", key);
-
-                client?.write('data: refresh');
-            }
-        }
-    }
-
-    console.log(chalk.blue(`listening on port http://localhost:${argv.port}`));
-
-    await build(appconfig, cwd, "web", argv, () =>{
-
-    }, () => {
-        sendRefresh()
-    });
-
-    var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
-
-    await build(appconfig, cwd, "node", argv, () =>{
-        currentBe?.kill(9);
-    }, () => {
-        currentBe = spawnBackend();
-    });
+    startWeb(appconfig, root, argv);
+    
 }

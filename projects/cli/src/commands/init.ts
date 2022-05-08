@@ -1,7 +1,13 @@
+// theirs
 import chalk from 'chalk';
 import fs from 'fs';
 import { exec } from 'child_process'
 import yargs from 'yargs';
+import path from "path";
+
+// mine
+import { AppConfig } from '../documents/appConfig';
+import { fixGameName } from '../utils/ext';
 
 export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
 
@@ -27,15 +33,24 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
         });
     }
 
+    var gameName = fixGameName(path.basename(path.resolve(process.cwd())));
+
+    var config = {
+        entryPoint: "./src/index.ts",
+        fillScreen: true,
+        gameName: gameName
+    }
+
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
     await run("tsc --init", "Initializing Typescript..");
     await run("npm i frakas", "Adding Frakas Dependencies..");
     await run("npm i @babylonjs/core", "Adding @babylonjs/core..");
 
-    await fs.promises.writeFile('frakas.json', config);
+    await fs.promises.writeFile('frakas.json', JSON.stringify(config, null, 2));
     await fs.promises.mkdir('src', { recursive: true });
     await fs.promises.writeFile('src/index.ts', code);
+    await fs.promises.writeFile('.frignore', ignore)
 
     // update package.json
     let rawdata = fs.readFileSync('package.json').toString();
@@ -47,13 +62,10 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
     console.log(chalk.blue("Done!!"));
 }
 
-const config =
-    `{
-    "entryPoint": "src/index.ts",
-    "ws-port": 10000,
-    "port": 10001
-}
-`
+const ignore = `node_modules
+bin
+obj
+build`;
 
 const code =
     `

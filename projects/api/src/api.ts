@@ -1,5 +1,4 @@
 import { Observable } from 'rxjs';
-import { GameConfig } from './documents/__gameConfig';
 
 export interface PlayerEventContent<T> {
     playerPosition: number;
@@ -11,6 +10,7 @@ export interface IFrontendApi {
     onPrivateEvent<T>(): Observable<T>;
     onPublicEvent<T>(): Observable<T>;
     onGameStop<T>(): Observable<T>;
+    assetsRoot: string;
 }
 
 export interface IBackendApi {
@@ -40,24 +40,31 @@ export function setFrontend(feCallback: (n: IFrontendApi) => any) {
         var elRatio = document.getElementById('screen-ratio');
         var ratio = +(<HTMLInputElement>elRatio)?.value;
 
+        var elGamePrimaryName = document.getElementById('game-primary-name');
+        var gamePrimaryName = (<HTMLInputElement>elGamePrimaryName)?.value;
+
+        if(gamePrimaryName) {
+            wsUrl = `${wsUrl}/${gamePrimaryName}`;
+        }
+
         console.log(`ws-url:${wsUrl}`);
         console.log(`fill-screen:${fill}`);
         console.log(`screen-ratio:${ratio}`);
 
-        _setupGameWindow(<GameConfig>{fillScreen: fill, screenRatio: ratio});
+        _setupGameWindow(fill, ratio);
 
         var { FeWebsocket } = require('./fe/feWebsocket');
         var { PlayerContainer } = require('./fe/playerContainer');
 
         var feWebsocket = new FeWebsocket(`${wsUrl}`);
 
-        console.log(`Create EventSource`);
+        // console.log(`Create EventSource`);
 
-        var evtSource = new EventSource("/subscribe");
+        // var evtSource = new EventSource("/subscribe");
 
-        evtSource.onmessage = function () {
-            window.location.reload();
-        };
+        // evtSource.onmessage = function () {
+        //     window.location.reload();
+        // };
 
         new PlayerContainer(feWebsocket, feCallback);
     })
@@ -67,57 +74,42 @@ export function setBackend(beCallback: (n: IBackendApi) => any) {
 
     if (typeof process === 'object') {
         var runAsync = async () => {
-            const yargs = require('yargs/yargs');
-            const { hideBin } = require('yargs/helpers');
+
             const { BeWebsocket } = require('./be/beWebsocket');
-            const argv = await yargs(hideBin(process.argv))
-                .usage("Usage: --port")
-                .option("port", { alias: "p", describe: "websocket port number to listen on", type: "number", demandOption: true })
-                .option("verbose", { alias: "v", describe: "verbose logging", type: 'boolean' })
-                .argv
+
+            var port = process.argv[2];
 
             console.log("beCallback called");
-            console.log(`args`, argv);
+            console.log(`args`, port);
 
-            new BeWebsocket(argv, beCallback);
+            new BeWebsocket(port, beCallback);
         }
         runAsync()
     }
 }
 
-function _setupGameWindow(gameConfig: GameConfig) {
-    window.addEventListener('resize', () => {
-        _resizeCanvas(gameConfig);
-    });
+function _setupGameWindow(fillScreen: boolean, screenRatio: number) {
+    // window.addEventListener('resize', () => {
+    //     _resizeCanvas(fillScreen, screenRatio);
+    // });
 
-    _resizeCanvas(gameConfig);
+    _resizeCanvas(fillScreen, screenRatio);
 }
 
-function _resizeCanvas(gameConfig: GameConfig) {
+function _resizeCanvas(fillScreen: boolean, screenRatio: number) {
 
-    if (!gameConfig) {
-        _resizeCanvasFillscreen();
-    } else if (gameConfig?.fillScreen) {
+    var holder = document.querySelector('#renderCanvas-holder');
+
+    // if(window.innerHeight > window.innerWidth){
+    //     holder?.classList.add("rotate-window");
+    // } else {
+    //     holder?.classList.remove("rotate-window");
+    // }
+
+    if (fillScreen) {
         _resizeCanvasFillscreen();
     } else {
-        _resizeCanvasRatio(gameConfig);
-    }
-}
-
-function _openFullscreen() {
-    var canvasHolderEl = document.getElementById('renderCanvas-holder') as any;
-
-    if (canvasHolderEl?.requestFullscreen) {
-        canvasHolderEl?.requestFullscreen();
-    } else if (canvasHolderEl?.mozRequestFullScreen) {
-        /* Firefox */
-        canvasHolderEl?.mozRequestFullScreen();
-    } else if (canvasHolderEl?.webkitRequestFullscreen) {
-        /* Chrome, Safari and Opera */
-        canvasHolderEl?.webkitRequestFullscreen();
-    } else if (canvasHolderEl?.msRequestFullscreen) {
-        /* IE/Edge */
-        canvasHolderEl?.msRequestFullscreen();
+        _resizeCanvasRatio(screenRatio);
     }
 }
 
@@ -127,7 +119,7 @@ function _resizeCanvasFillscreen() {
     canvasEl?.setAttribute('style', `width: 100%; height: 100%;`);
 }
 
-function _resizeCanvasRatio(gameConfig: GameConfig) {
+function _resizeCanvasRatio(screenRatio: number) {
 
     var canvasHolderEl = document.getElementById('renderCanvas-holder') as any;
     var canvasEl = document.getElementById('renderCanvas');
@@ -137,20 +129,18 @@ function _resizeCanvasRatio(gameConfig: GameConfig) {
     var canvasHolderH = canvasHolderEl?.offsetHeight;
     var canvasHolderW = canvasHolderEl?.offsetWidth;
 
-    var maxHeight = canvasHolderW * (1 / gameConfig.screenRatio);
-    var maxWidth = canvasHolderH * gameConfig.screenRatio;
+    var maxHeight = canvasHolderW * (1 / screenRatio);
+    var maxWidth = canvasHolderH * screenRatio;
 
     if (maxHeight > canvasHolderH - offsetH) {
-        var width = (canvasHolderH - offsetH) * gameConfig.screenRatio;
+        var width = (canvasHolderH - offsetH) * screenRatio;
         var height = canvasHolderH - offsetH;
         canvasEl?.setAttribute('style', `width: ${width}px; height: ${height}px;`);
 
     } else if (maxWidth > canvasHolderW - offsetW) {
         var width = (canvasHolderW - offsetW);
-        var height = (canvasHolderW - offsetW) / gameConfig.screenRatio;
+        var height = (canvasHolderW - offsetW) / screenRatio;
         canvasEl?.setAttribute('style', `width: ${width}px; height: ${height}px;`);
     }
-
-    //_engine.resize();
 
 }

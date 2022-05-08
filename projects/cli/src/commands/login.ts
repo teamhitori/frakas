@@ -120,7 +120,7 @@ export async function getPublicClientApplication(): Promise<msal.PublicClientApp
                 system: {
                     loggerOptions: {
                         loggerCallback(loglevel: any, message: any, containsPii: any) {
-                            console.log(message);
+                            //console.log(message);
                         },
                         piiLoggingEnabled: false,
                         logLevel: msal.LogLevel.Verbose,
@@ -164,7 +164,7 @@ export async function login(): Promise<boolean> {
                     resolve(false);
                 }).finally(() => {
                     res.end(); //end the response
-                    console.log("closing server");
+                    //console.log("closing server");
                     server.close();
                 });
 
@@ -182,7 +182,7 @@ export async function login(): Promise<boolean> {
                 // Set generated PKCE Codes as session vars
                 _verifier = verifier;
 
-                console.log({ verifier, challenge });
+                //console.log({ verifier, challenge });
 
                 var authCodeRequest = <msal.AuthorizationUrlRequest>{
                     redirectUri: _redirectUri,
@@ -198,9 +198,9 @@ export async function login(): Promise<boolean> {
                 // Get url to sign user in and consent to scopes needed for application
                 pca.getAuthCodeUrl(authCodeRequest).then(async (response) => {
                     await open(`${response}`);
-                    console.log(response);
+                    //console.log(response);
                 }).catch((error) => {
-                    console.log(JSON.stringify(error));
+                    //console.log(JSON.stringify(error));
                     resolve(false);
                 });
             });

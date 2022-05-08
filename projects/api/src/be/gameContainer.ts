@@ -21,7 +21,7 @@ export class GameContainer {
     private _onGameStop: Subject<any> = new Subject()
     private _onGameStart: Subject<any> = new Subject()
 
-    public constructor(private _args: any, beCallback: (n: IBackendApi) => any){
+    public constructor(beCallback: (n: IBackendApi) => any){
         try {
 
             try {
@@ -127,13 +127,13 @@ export class GameContainer {
                     if (connectionId == connectionIdIn) {
                         existingUser = true;
                         nextPos = this._playerList[connectionIdIn];
-                        if(this._args.verbose) console.log(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
+                        console.log(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
 
                     }
                 }
 
                 if (!existingUser) {
-                    if(this._args.verbose) console.log(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
+                    console.log(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
                     this._nextPos++;
                 }
 

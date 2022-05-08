@@ -1,23 +1,22 @@
 import webpack, { RuleSetRule, Stats, WebpackError } from 'webpack';
 import chalk from 'chalk';
 import path from 'path';
-
-import yargs from 'yargs';
+import fs from 'fs';
 
 
 // mine
-// import { AppConfig } from '../../../api/src/documents/config'
 import HtmlWebpackPlugin from 'html-webpack-plugin';
-import MiniCssExtractPlugin from "mini-css-extract-plugin"
+import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import CopyWebpackPlugin from 'copy-webpack-plugin';
 import { AppConfig } from '../documents/appConfig';
+import { args } from '../documents/args';
 
-
-
-export function build(config: AppConfig, cwd: string, target: string, argv: yargs.ArgumentsCamelCase<{}>, callbackStart: () => void, callbackComplete: (errors:boolean) => void) {
+export function build(config: AppConfig, cwd: string, target: string, argv: args, callbackStart: () => void, callbackComplete: (errors: boolean) => void) {
 
     var unresolved = true;
+    var assets = ""
 
-    var plugins = (target == "web") ? [new HtmlWebpackPlugin({
+    var plugins: any[] = (target == "web") ? [new HtmlWebpackPlugin({
         title: 'Custom template',
         // Load a custom template (lodash by default)
         templateContent: `<!DOCTYPE html>
@@ -29,8 +28,9 @@ export function build(config: AppConfig, cwd: string, target: string, argv: yarg
             <title>${config.gameName}</title>
         </head>
         <body>
-          <input type="hidden" value="ws://localhost:${argv['ws-port']}/ws" id="ws-url" />
-          <input type="hidden" value="${argv['ws-port']}" id="ws-port" />
+          <input type="hidden" value="${assets}" id="assets-root" />
+          <input type="hidden" value="ws://localhost:${argv.wsPort}/ws" id="ws-url" />
+          <input type="hidden" value="${argv.wsPort}" id="ws-port" />
           <input type="hidden" value="${config.fillScreen}" id="fill-screen" />
           <input type="hidden" value="${config.screenRatio}" id="screen-ratio" />
           <div class="cavas-holder-inner" id="renderCanvas-holder">
@@ -40,6 +40,26 @@ export function build(config: AppConfig, cwd: string, target: string, argv: yarg
         </html>`
     }),
     new MiniCssExtractPlugin()] : [new MiniCssExtractPlugin()];
+
+    if(target == "web" && fs.existsSync(`${cwd}/assets`)) {
+        plugins.push(
+            new CopyWebpackPlugin({
+                patterns: [
+                    {
+                        from: 'assets',
+                        filter: async (resourcePath) => {
+                            // var folderExists1 = fs.existsSync(`${cwd}/assets`);
+                            // var folderExists2 = fs.existsSync(`${resourcePath}`);
+                            // console.log(`${cwd}/assets exists: ${folderExists1}`);
+                            // console.log(`${resourcePath} exists: ${folderExists2}`);
+        
+                            return fs.existsSync(`${cwd}/assets`);
+                        }
+                    }
+                ]
+            })
+        )
+    }
 
     var rules: (RuleSetRule | "...")[] = [
         {
@@ -76,11 +96,14 @@ export function build(config: AppConfig, cwd: string, target: string, argv: yarg
     console.log(`target: ${target}, entry: ${config.entryPoint}`);
 
     var buildStart = Date.now();
-    
+
     const compiler = webpack({
         target: target,
         entry: [config.entryPoint],
         watch: true,
+        watchOptions: {
+            ignored: [path.resolve(cwd, 'obj')],
+          },
         module: {
             rules: rules
         },
@@ -124,7 +147,7 @@ export function build(config: AppConfig, cwd: string, target: string, argv: yarg
             console.log(stats?.compilation.errors);
 
             callbackComplete(true);
-        } else{
+        } else {
             console.log(chalk.yellow(`[${new Date(stats?.endTime).toLocaleString()}] Build complete: ${target} with no errors in ${new Date(stats?.endTime - buildStart).getSeconds()} seconds output obj/${target}.bundle.main.js [${new Date(stats?.endTime).toLocaleString()}] `));
 
             callbackComplete(false);
@@ -134,13 +157,13 @@ export function build(config: AppConfig, cwd: string, target: string, argv: yarg
             unresolved = false;
         }
 
-        
+
     });
 
     compiler.hooks.watchRun.tap('watchRun', (context) => {
         buildStart = Date.now();
         console.log(chalk.whiteBright(`[${new Date(buildStart).toLocaleString()}] Build started: ${target} `));
-        
+
         callbackStart()
     });
 
