@@ -11,7 +11,7 @@
     "build/*.tsx"
   ],
   "scripts": {
-    "build:api": "cd projects/api && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
+    "build:api": "cd projects/api && npx tsc && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
     "build:cli": "cd projects/cli && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
     "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js && time /t",
     "build": "npm run build:api && npm run build:cli && npm run build:pub_conf && time /t",

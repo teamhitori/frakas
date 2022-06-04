@@ -1,12 +1,11 @@
 const path = require('path');
-const HtmlWebPackPlugin = require('html-webpack-plugin');
 
 module.exports = {
     target: "node",
-    devtool: 'inline-source-map',
     entry: {
-        app: './src/api.ts'
+        api: './src/api.ts'
     },
+    mode: 'production',
     module: {
         rules: [
             {
@@ -45,8 +44,8 @@ module.exports = {
     },
     output: {
         globalObject: 'self',
-        filename: '[name].bundle.js',
-        path: path.resolve(__dirname, 'dist')
+        filename: '[name].js',
+        path: path.resolve(__dirname, 'publish')
     },
     plugins: []
 };

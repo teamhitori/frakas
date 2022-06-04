@@ -1,3 +1,3 @@
 export interface IPlayerEventWrapper {
-  data: any;
+  data: any[];
 }

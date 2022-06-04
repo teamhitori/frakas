@@ -39,3 +39,5 @@ To build and run:
 frakas serve
 ```
 This with compile typescript files, start a backend run time and basic web server to host game.
+
+For questions or how to contribute, reach me at reubenh@frakas.net

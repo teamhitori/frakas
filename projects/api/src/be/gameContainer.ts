@@ -1,18 +1,16 @@
 
 import { Observable, Subject } from 'rxjs';
-import { IBackendApi, PlayerEventContent } from '../api';
-import { IConnectedUserDocument } from './IConnectedUserDocument';
+import { IBackendApi, PlayerEventContent } from '../public';
 
 export class GameContainer {
 
     private _sendToPlayerObservable: Subject<{ [id: string]: any; }> | null = null;
     private _sendToAllObservable: Subject<any> | null = null;
-    
+
     private _loopActive = false;
 
     private _playerList: { [id: string]: any; } = {};
     private _nextPos = 0;
-    private _gameCreated: boolean = false;
 
     private _onPlayerEvent: Subject<PlayerEventContent<any>> = new Subject();
     private _onGameLoop: Subject<any> = new Subject();
@@ -21,75 +19,73 @@ export class GameContainer {
     private _onGameStop: Subject<any> = new Subject()
     private _onGameStart: Subject<any> = new Subject()
 
-    public constructor(beCallback: (n: IBackendApi) => any){
+    public constructor(beCallback: (n: IBackendApi) => any) {
+
         try {
 
-            try {
+            var backendApi = <IBackendApi>{
+                sendToPlayer: (content: PlayerEventContent<any>) => {
+                    
+                    for (let connectionId in this._playerList) {
+                        if (this._playerList[connectionId] == content.playerPosition) {
+                            // console.log("sendToPlayer", content, this._playerList, this._sendToPlayerObservable);
 
-                var backendApi = <IBackendApi>{
-                    sendToPlayer: (content: PlayerEventContent<any>) => {
-                        for (let connectionId in this._playerList) {
-                            if (this._playerList[connectionId] == content.playerPosition) {
-                                this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": content.playerState });
-                            }
+                            this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": content.playerState });
                         }
-                    },
-                    sendToAll: (state: any) => {
-                        this._sendToAllObservable?.next(state);
-                    },
-                    onPlayerEvent: () => {
-                        return this._onPlayerEvent;
-                    },
-                    onGameLoop: () => {
-                        return this._onGameLoop;
-                    },
-                    onPlayerEnter: () => {
-                        return this._onPlayerEnter;
-                    },
-                    onPlayerExit: () => {
-                        return this._onPlayerExit;
-                    },
-                    onGameStop: () => {
-                        return this._onGameStop;
-                    },
-                    onGameStart: () => {
-                        return this._onGameStart;
                     }
-                };
+                },
+                sendToAll: (state: any) => {
+                    this._sendToAllObservable?.next(state);
+                },
+                onPlayerEvent: () => {
+                    return this._onPlayerEvent;
+                },
+                onGameLoop: () => {
+                    return this._onGameLoop;
+                },
+                onPlayerEnter: () => {
+                    return this._onPlayerEnter;
+                },
+                onPlayerExit: () => {
+                    return this._onPlayerExit;
+                },
+                onGameStop: () => {
+                    return this._onGameStop;
+                },
+                onGameStart: () => {
+                    return this._onGameStart;
+                }
+            };
 
-                beCallback(backendApi);
-       
+            beCallback(backendApi);
 
-            } catch (error) {
-                console.log(error);
-            }
-
-            this._gameCreated = true;
-
-        } catch (ex) {
-            this._loopActive = false;
+        } catch (error) {
+            console.log(error);
         }
     }
 
-    public startGame(contentIn: any) {
-        if (!this._loopActive && this._gameCreated) {
+    public startGame() {
+        if (!this._loopActive) {
+            console.log(`startGame called`);
+
+            this._loopActive = true;
+
+            if (!this._sendToAllObservable) {
+                this._sendToAllObservable = new Subject<any>();
+            }
+
+            if (!this._sendToPlayerObservable) {
+                this._sendToPlayerObservable = new Subject<any>();
+            }
 
             try {
                 this._onGameStart.next({});
             } catch (ex: any) {
-
+                this._loopActive = false;
             }
 
         } else {
-
-        }
-
-        if (!this._sendToAllObservable) {
-            this._sendToAllObservable = new Subject<any>();
-        }
-
-        if (!this._sendToPlayerObservable) {
-            this._sendToPlayerObservable = new Subject<any>();
+            console.log(`startGame called, however game already started, ignoring..`);
         }
     }
 
@@ -116,7 +112,7 @@ export class GameContainer {
         });
     }
 
-    public playerEnter(connectionIdIn: string, content: string): Promise<string> {
+    public playerEnter(connectionIdIn: string): Promise<string> {
         return new Promise((resolve, reject) => {
             try {
 
@@ -179,14 +175,28 @@ export class GameContainer {
         });
     }
 
-    public playerEventIn(connectionId: string, content: string) {
+    public playerEvent(connectionId: string, content: string) {
         try {
-            //if(this._args.verbose) console.log(`playerEventIn connectionId: ${connectionId}, content: ${content}`)
             var events = JSON.parse(content);
+
+            var playerPosition =  +this._playerList[connectionId]
+
+            if(isNaN(playerPosition)) return;
+
+            // if(events.length) {
+            //     console.log(`GameContainer.playerEvent connectionId: ${connectionId}, content: ${content}, playerList: `, this._playerList);         
+            // }
+
             for (const event of events) {
+
+                // console.log(`GameContainer.playerEvent calling this._onPlayerEvent.next`, {
+                //     playerPosition: playerPosition,
+                //     playerState: event
+                // });
+
                 this._onPlayerEvent.next(<PlayerEventContent<any>>{
-                    playerPosition: +this._playerList[connectionId],
-                    playerState: event.data
+                    playerPosition: playerPosition,
+                    playerState: event
                 })
             }
         } catch (ex) {
