@@ -1,163 +1,169 @@
-import * as ts from "typescript";
-import path, { parse } from 'path';
-import fs from 'fs';
-import browserify from 'browserify';
-import fse from 'fs-extra';
-import chalk from 'chalk';
+// import * as ts from "typescript";
+// import path, { parse } from 'path';
+// import fs from 'fs';
+// import fse from 'fs-extra';
+// import chalk from 'chalk';
 
-// mine
-import { AppConfig } from "../documents/appConfig";
-import { args } from "../documents/args";
+// // mine
+// //import { AppConfig } from "../documents/appConfig";
+// import { args } from "../documents/args";
 
 
-function compile(fileNames: string[], options: ts.CompilerOptions): boolean {
-  let program = ts.createProgram(fileNames, options);
-  let emitResult = program.emit();
+// function compile(fileNames: string[], options: ts.CompilerOptions): boolean {
+//   let program = ts.createProgram(fileNames, options);
+//   let emitResult = program.emit();
 
-  let allDiagnostics = ts
-    .getPreEmitDiagnostics(program)
-    .concat(emitResult.diagnostics);
+//   let allDiagnostics = ts
+//     .getPreEmitDiagnostics(program)
+//     .concat(emitResult.diagnostics);
 
-  allDiagnostics.forEach(diagnostic => {
-    if (diagnostic.file) {
-      let { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
-      let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
-      console.log(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`);
-    } else {
-      console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
-    }
-  });
+//   allDiagnostics.forEach(diagnostic => {
+//     if (diagnostic.file) {
+//       let { line, character } = ts.getLineAndCharacterOfPosition(diagnostic.file, diagnostic.start!);
+//       let message = ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n");
+//       console.log(chalk.red(`${diagnostic.file.fileName} (${line + 1},${character + 1}): ${message}`));
+//     } else {
+//       console.log(ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"));
+//     }
+//   });
 
-  return !emitResult.emitSkipped;
-}
+//   return !emitResult.emitSkipped;
+// }
 
-export async function buildAll(appconfig: AppConfig, root: string, argv: args) {
+// export async function buildAll(appconfig: any, root: string, argv: args): Promise<boolean> {
 
-  var cwd = process.cwd();
-  var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
-  var entryName = parse(appconfig.entryPoint).name
-  var outputPath = path.resolve(cwd, "obj");
+//   fs.rmSync("obj", { force: true, recursive: true });
 
-  console.log(`compile root:${entrypointPath}`);
+//   var cwd = process.cwd();
+//   var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
+//   var entryName = parse(appconfig.entryPoint).name
+//   var outputPath = path.resolve(cwd, "obj");
 
-  if (!fs.existsSync(entrypointPath)) {
-    console.log(`Cannot find ${entrypointPath}, extiing`);
-    return;
-  }
+//   console.log(`compile root:${entrypointPath}`);
 
-  var options = {
-    noEmitOnError: true,
-    noImplicitAny: true,
-    target: ts.ScriptTarget.ESNext,
-    module: ts.ModuleKind.CommonJS,
-    esModuleInterop: true,
-    skipLibCheck: true,
-    outDir: outputPath
-  }
+//   if (!fs.existsSync(entrypointPath)) {
+//     console.log(`Cannot find ${entrypointPath}, extiing`);
+//     return false;
+//   }
 
-  var compiled = compile([entrypointPath], options);
+//   var options = {
+//     noEmitOnError: true,
+//     noImplicitAny: true,
+//     target: ts.ScriptTarget.ESNext,
+//     module: ts.ModuleKind.CommonJS,
+//     esModuleInterop: true,
+//     skipLibCheck: true,
+//     outDir: outputPath
+//   }
 
-  if (!compiled) {
-    console.log(`Typescript compilation error, exiting`);
-    return;
-  }
+//   var compiled = compile([entrypointPath], options);
 
-  var browserifySource = path.resolve(`${outputPath}`, `${entryName}.js`);
-  var browserifyTarget = path.resolve(`${outputPath}`, `node.bundle.main.js`);
+//   if (!compiled) {
+//     console.log(`Typescript compilation error, exiting`);
+//     return false;
+//   }
 
-  console.log(`Entry: ${browserifySource}, packing ..`);
+//   var browserifySource = path.resolve(`${outputPath}`, `${entryName}.js`);
+//   var browserifyTarget = path.resolve(`${outputPath}`, `client.js`);
 
-  var myFile = fs.createWriteStream(browserifyTarget);
+//   console.log(`Entry: ${browserifySource}, packing ..`);
 
-  var b = browserify({
-    node: true,
-    plugin: [
-      [require('esmify'), { /* ... options ... */ }]
-    ]
-  });
-  b.add(browserifySource);
+//   var myFile = fs.createWriteStream(browserifyTarget);
 
-  return new Promise((resolve, reject) => {
+//   // var b = browserify({
+//   //   //node: true,
+//   //   plugin: [
+//   //     [require('esmify'), { /* ... options ... */ }]
+//   //   ],
+//   //   ignoreMissing: true
+//   // });
+//   // b.add(browserifySource);
 
-    var stream = b.bundle().pipe(myFile);
+//   return new Promise((resolve, reject) => {
 
-    stream.on('finish', async function () {
+//     var stream = b.bundle().pipe(myFile);
+//     stream.on('finish', async function () {
 
-      var assetsTarget = path.resolve(outputPath, `assets`);
-      var assetsSource = path.resolve(cwd, `assets`);
+//       console.log(chalk.white(`Bundle created: ${browserifyTarget}`))
 
-      if (fs.existsSync(assetsSource)) {
-        console.log(`Copying Static assets ${assetsSource} to ${assetsTarget}`);
+//       var assetsTarget = path.resolve(outputPath, `assets`);
+//       var assetsSource = path.resolve(cwd, `assets`);
 
-        fse.copySync(assetsSource, assetsTarget)
-      }
+//       if (fs.existsSync(assetsSource)) {
+//         console.log(`Copying Static assets ${assetsSource} to ${assetsTarget}`);
 
-      var html = getHtml(appconfig.gameName, `assets/`, argv.wsPort, appconfig.fillScreen, appconfig.screenRatio)
+//         fse.copySync(assetsSource, assetsTarget)
+//       }
 
-      fs.writeFileSync(path.resolve(`${outputPath}`, `app.css`), css);
-      fs.writeFileSync(path.resolve(`${outputPath}`, `index.html`), html);
 
-      console.log(chalk.green(`[Overall build Complete]`));
-      resolve({});
+//       var html = getHtml(appconfig.gameName, `assets/`, argv.wsPort, appconfig.fillScreen, appconfig.screenRatio, argv.webBundleName, argv.remoteHttpBase);
 
-    });
+//       fs.writeFileSync(path.resolve(`${outputPath}`, `app.css`), css);
+//       fs.writeFileSync(path.resolve(`${outputPath}`, `index.html`), html);
 
-    stream.on('error', function (ex) {
-      console.log(`[Overall build Complete with errors] ${ex}`);
+//       console.log(chalk.green(`[Overall build Complete]`));
+//       resolve(true);
 
-      reject(ex);
-    });
+//     });
 
-  });
+//     stream.on('error', function (ex) {
+//       console.log(`[Overall build Complete with errors] ${ex}`);
 
-}
+//       resolve(false);
+//       //reject(ex);
+//     });
 
-var getHtml = (gameName: string, assetsRoot: string, wsPort: number, fillScreen: boolean, screenRatio: number) => `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>${gameName}</title>
-    </script><script defer="defer" src="node.bundle.main.js">
-    </script><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    </script><link href="app.css" rel="stylesheet">
-</head>
-<body>
-  <input type="hidden" value="${assetsRoot}" id="assets-root" />
-  <input type="hidden" value="ws://localhost:${wsPort}/ws" id="ws-url" />
-  <input type="hidden" value="${wsPort}" id="ws-port" />
-  <input type="hidden" value="${fillScreen}" id="fill-screen" />
-  <input type="hidden" value="${screenRatio}" id="screen-ratio" />
-  <div class="cavas-holder-inner" id="renderCanvas-holder">
-    <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
-  </div>
-</body>
-</html>`
+//   });
 
-var css = `
-#renderCanvas {
-  position: relative;
-  top: 0px;
-  bottom: 0px;
-  max-width: 100%;
-  margin: auto auto;
-  border: 1px solid white;
-  background-color: #383838;
-  height: 100%;
-}
+// }
 
-.cavas-holder-inner {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  position: absolute;
-  background-color: #585858;
-}
+// var getHtml = (gameName: string, assetsRoot: string, wsPort: number, fillScreen: boolean, screenRatio: number, bundleName: string, remoteHttpBase: string) => `<!DOCTYPE html>
+// <html lang="en">
+// <head>
+//     <meta charset="UTF-8">
+//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//     <meta http-equiv="X-UA-Compatible" content="ie=edge">
+//     <title>${gameName}</title>
+//     </script><script defer="defer" src="${bundleName}.js"></script>
+//     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+//     <link href="app.css" rel="stylesheet">
+// </head>
+// <body>
+//   <input type="hidden" value="${assetsRoot}" id="assets-root" />
+//   <input type="hidden" value="ws://localhost:${wsPort}/ws" id="ws-url" />
+//   <input type="hidden" value="${remoteHttpBase}" id="remote-http-base" />
+//   <input type="hidden" value="${wsPort}" id="ws-port" />
+//   <input type="hidden" value="${fillScreen}" id="fill-screen" />
+//   <input type="hidden" value="${screenRatio}" id="screen-ratio" />
+//   <div class="cavas-holder-inner" id="renderCanvas-holder">
+//     <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
+//   </div>
+// </body>
+// </html>`
 
-body{
-  margin:0;
-  overflow:hidden;
-  overscroll-behavior-y: contain;
-}`;
+// var css = `
+// #renderCanvas {
+//   position: relative;
+//   top: 0px;
+//   bottom: 0px;
+//   max-width: 100%;
+//   margin: auto auto;
+//   border: 1px solid white;
+//   background-color: #383838;
+//   height: 100%;
+// }
+
+// .cavas-holder-inner {
+//   width: 100%;
+//   height: 100%;
+//   display: flex;
+//   position: absolute;
+//   background-color: #585858;
+// }
+
+// body{
+//   margin:0;
+//   overflow:hidden;
+//   overscroll-behavior-y: contain;
+// }`;
 

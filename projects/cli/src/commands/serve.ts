@@ -1,47 +1,46 @@
+// theirs
 import chalk from 'chalk';
 import path from 'path'
 import fs from 'fs';
-import { ChildProcessWithoutNullStreams } from 'child_process'
 
 // mine
-import { build } from '../utils/buildExt'
-import { AppConfig } from '../documents/appConfig';
+import { FrakasJson } from '@frakas/api/documents/FrakasJson';
 import { args } from '../documents/args';
-import { startWeb } from '../utils/webExt';
 import { spawnBackend } from '../utils/runExt';
-import { buildAll } from './buildNew';
+
+import { buildWebpack } from '../utils/webpack';
+import { ChildProcessWithoutNullStreams } from 'child_process';
 
 
-export async function serve(appconfig: AppConfig, root: string, argv: args) {
-    console.info(`start server on :${argv.port}`);
+export async function serve(appconfig: FrakasJson, root: string, args: args) {
+    console.info(`start server on :${appconfig.webPort}`);
 
     console.log(chalk.blue("Watch Started"));
 
     var cwd = process.cwd();
     var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
+    var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
+    var isFirstRun = true;
 
     console.log(`Entrypoint: ${entrypointPath}`);
 
-    fs.rmSync("obj", { force: true, recursive: true });
+    buildWebpack( args, () => {
+        currentBe?.kill(9);
+    }, errors => {
 
-    // await build(appconfig, cwd, "web", argv, () => {
+        if(errors) {
+            console.log(chalk.yellow(`Build Complete with errors`));
+            console.log(errors);
 
-    // }, () => {
-    //     console.log(chalk.blue(`listening on port http://localhost:${argv.port}`));
-    // });
+        } else {
+            console.log(chalk.green(`Build Complete`));
 
-    // var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
+            currentBe = spawnBackend(appconfig, root, args, isFirstRun);
 
-    // await build(appconfig, cwd, "node", argv, () => {
-    //     currentBe?.kill(9);
-    // }, () => {
-    //     currentBe = spawnBackend(appconfig, root, argv);
-    // });
+            isFirstRun = false;
 
-    await buildAll(appconfig, root, argv);
+            //startWeb(appconfig, root, args);
+        }
 
-    spawnBackend(appconfig, root, argv);
-
-    startWeb(appconfig, root, argv);
-    
+    });
 }

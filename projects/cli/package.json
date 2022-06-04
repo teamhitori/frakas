@@ -1,17 +1,25 @@
 {
-  "name": "frakas",
-  "version": "1.0.10",
-  "description": "Frakas the multiplayer framework",
+  "name": "@frakas/cli",
+  "version": "0.0.31",
+  "description": "Frakas multiplayer framework CLI",
   "main": "app.js",
-  "types": "app.d.ts",
   "files": [
     "*.js",
     "*.ts",
-    "*.map"
+    "*.map",
+    "**/*.js",
+    "**/*.ts",
+    "**/*.map"
   ],
   "scripts": {
-    "build-webpack": "npx webpack --config webpack.config.js && node ../../scripts/write-version.js ./build/version.json",
-    "build": "tsc && node ../../scripts/copy bin build && node ../../scripts/write-version.js ./build/version.json"
+    "build-webpack": "npx webpack && tsc --emitDeclarationOnly --outDir publish",
+    "build": "tsc --moduleResolution \"node\" --module \"commonjs\" --allowJs --outDir publish && node ../../scripts/copy.js bin publish",
+    "debug": "node --inspect=9229 build/app.js",
+    "publish": "cd publish && npm publish --access public",
+    "publish-local": "cd publish && npm i -gf",
+    "prePublish": "node ../../scripts/prePublish.js",
+    "local": "npm run build && npm run prePublish && npm run publish-local",
+    "all": "npm run build && npm run prePublish && npm run publish"
   },
   "repository": {
     "type": "git",
@@ -23,54 +31,54 @@
   "bugs": {
     "url": "https://github.com/teamhitori/frakas/issues"
   },
+  "browserify": {
+    "transform": [
+      "browserify-shim"
+    ]
+  },
   "bin": {
-    "frakas": "build/frakas"
+    "frakas": "frakas"
   },
   "homepage": "https://github.com/teamhitori/frakas#readme",
   "dependencies": {
     "@azure/msal-node": "^1.7.0",
     "@azure/msal-node-extensions": "^1.0.0-alpha.16",
+    "@frakas/api": "^0.0.4",
     "axios": "^0.26.1",
-    "browserify": "^17.0.0",
+    "bufferutil": "^4.0.6",
     "chalk": "^4.1.2",
-    "copy-webpack-plugin": "^10.2.4",
-    "eslint": "^8.8.0",
-    "esmify": "^2.1.1",
+    "copy-webpack-plugin": "^11.0.0",
     "express": "^4.17.2",
     "fast-glob": "^3.2.11",
     "figlet": "^1.5.2",
+    "file-loader": "^6.2.0",
     "fs": "0.0.1-security",
     "fs-extra": "^10.1.0",
     "globby": "^13.1.1",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.6.0",
     "mmmagic": "^0.5.3",
-    "mustache": "^4.2.0",
     "open": "^8.4.0",
+    "path-browserify": "^1.0.1",
     "rxjs": "^7.5.4",
     "source-map-loader": "^3.0.1",
-    "terser-webpack-plugin": "^5.3.1",
-    "ts-loader": "^9.2.6",
+    "ts-loader": "^9.3.0",
     "typescript": "^4.5.5",
+    "utf-8-validate": "^5.0.9",
     "uuid": "^8.3.2",
-    "webpack": "^5.68.0",
+    "webpack": "^5.72.1",
     "webpack-cli": "^4.9.2",
-    "webpack-node-externals": "^3.0.0",
     "yargs": "^17.3.1"
   },
   "devDependencies": {
-    "@types/browserify": "^12.0.37",
     "@types/express": "^4.17.13",
     "@types/figlet": "^1.5.4",
     "@types/fs-extra": "^9.0.13",
     "@types/mmmagic": "^0.4.30",
     "@types/node": "^17.0.17",
-    "@types/passport": "^1.0.7",
-    "@types/passport-azure-ad": "^4.3.1",
     "@types/rx": "^4.1.2",
     "@types/uuid": "^8.3.4",
-    "@types/yargs": "^17.0.8",
-    "@typescript-eslint/eslint-plugin": "^5.11.0",
-    "@typescript-eslint/parser": "^5.11.0"
+    "@types/yargs": "^17.0.10",
+    "webpack-node-externals": "^3.0.0"
   }
 }

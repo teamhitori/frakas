@@ -5,16 +5,15 @@ import path from 'path'
 import chalk from "chalk";
 
 // mine
-import { AppConfig } from "../documents/appConfig";
+//import { AppConfig } from "../documents/appConfig";
 import { args } from "../documents/args";
-import { startWeb } from "../utils/webExt";
 import { spawnBackend } from "../utils/runExt";
+import { FrakasJson } from "@frakas/api/documents/FrakasJson";
 
 
-export function up(appconfig: AppConfig, root: string, argv: args) {
+export function up(appconfig: FrakasJson, root: string, argv: args) {
 
-    spawnBackend(appconfig, root, argv);
+    spawnBackend(appconfig, root, argv, true);
 
-    startWeb(appconfig, root, argv);
 
 }

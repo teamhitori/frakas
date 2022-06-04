@@ -1,7 +1,5 @@
 
 export interface args {
-    port: number,
-    wsPort: number,
-    verbose: boolean,
-    staticPath: string
+    webpackConfig: string,
+    verbose: boolean
 }

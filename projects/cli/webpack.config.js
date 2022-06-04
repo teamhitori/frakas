@@ -4,7 +4,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
     entry: "./src/app.ts",
-    output: { path: path.join(__dirname, "build"), filename: "app.bundle.js" },
+    output: { path: path.join(__dirname, "publish"), filename: "app.js" },
     mode: process.env.NODE_ENV || "development",
     target: 'node',
     externals: [nodeExternals()],

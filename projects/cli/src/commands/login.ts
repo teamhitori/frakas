@@ -9,7 +9,7 @@ import {
     PersistenceCachePlugin,
 } from "@azure/msal-node-extensions";
 
-import { AppConfig } from "../documents/appConfig";
+//import { AppConfig } from "../documents/appConfig";
 import axios from 'axios';
 import https from 'https';
 import e from 'express';
@@ -62,7 +62,7 @@ export async function getAccessToken(): Promise<string | undefined> {
                     return token?.accessToken;
                 }
             } catch (error) {
-                console.log("no token errorr")
+                console.log("")
             }
 
             return null;

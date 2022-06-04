@@ -4,18 +4,20 @@ import chalk from 'chalk';
 import path from 'path';
 
 // mine
-import { AppConfig } from "../documents/appConfig";
+// import { AppConfig } from "../documents/appConfig";
 import { args } from "../documents/args";
+import { FrakasJson } from "@frakas/api/documents/FrakasJson";
 
-export function spawnBackend(appconfig: AppConfig, root: string, argv: args): ChildProcessWithoutNullStreams {
+export function spawnBackend(appconfig: FrakasJson, root: string, argv: args, openBrowser: boolean): ChildProcessWithoutNullStreams {
 
     var cwd = process.cwd();
     var verboseTag = argv.verbose ? "-v" : "";
+    var indexjs = path.resolve(appconfig.serverDir, `server.js`);
 
-    console.log(chalk.green(`spawning backend, websocket on port ${argv.wsPort}`));
+    console.log(chalk.green(`spawning backend ${indexjs}`));
 
-    var be = spawn("node", [path.resolve(argv.staticPath, "node.bundle.main.js"), `${argv.wsPort}`, verboseTag], { cwd: cwd });
-
+    var be = spawn("node", [indexjs], { cwd: cwd });
+    
     be.stdout.on("data", (data: any) => {
         console.log(chalk.gray(data));
     });

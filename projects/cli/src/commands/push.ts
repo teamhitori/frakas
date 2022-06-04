@@ -4,7 +4,7 @@ import { resolve } from "path";
 import { getAccessToken } from "./login";
 import { ICodeFile } from "../documents/ICodeFile";
 import { existsSync, fstat } from "fs";
-import { AppConfig } from "../documents/appConfig";
+//import { AppConfig } from "../documents/appConfig";
 import axios, { AxiosRequestConfig } from "axios";
 import https from 'https';
 import { IGameConfig } from "../documents/IGameConfig";
@@ -17,7 +17,7 @@ import { IAssetFile } from "../documents/IAssetFile";
 import fs from 'fs';
 
 
-export async function push(config: AppConfig) {
+export async function push(config: any) {
 
     if (!isValidGameName(config.gameName)) {
         console.log(chalk.red(`Invalid Game Name: ${config.gameName}`));
@@ -78,7 +78,7 @@ export async function push(config: AppConfig) {
     });
 
     if (!username) {
-        console.log(chalk.red(`Huston we're having problems getting an access token, exiting..`));
+        console.log(chalk.red(`Huston we're having problems with access token, exiting..`));
         return;
 
     }
@@ -153,7 +153,7 @@ export async function push(config: AppConfig) {
     await axios.post(`${getWebRoot()}/api/editorApi/upsert-config/${publishedGameName}`, gameConfig, webConfig)
         .then(function (response) {
             // handle success
-            console.log(`Upload code complete`);
+            console.log(`Code push complete`);
 
             return response.data;
         })
@@ -169,7 +169,7 @@ export async function push(config: AppConfig) {
     await axios.post(`${webRoot}/api/editorApi/upsert-code/${publishedGameName}`, codeFiles, webConfig)
         .then((response) => {
             // handle success
-            console.log(`Upload code complete`);
+            console.log(`Code push complete`);
 
             return response.data;
         })
@@ -231,7 +231,7 @@ async function uploadFile(file: IAssetFile) {
         httpsAgent: agent
     };
 
-    console.log(`Uploading ${file.storageUrl}/${file.fileName}${file.sasToken}`);
+    console.log(`Uploading ${file.storageUrl}/${file.fileName}`);
     process.stdout.write(`File is 0% uploaded.`);
 
 
