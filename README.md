@@ -1,6 +1,7 @@
-<img src="https://raw.githubusercontent.com/teamhitori/frakas-platform/main/editor/src/assets/img/logo.png" height="200">
 
-# FRAKAS
+
+# <img src="https://raw.githubusercontent.com/teamhitori/frakas/main/assets/Frakas.gif" height="200">
+
  
 > FRAKAS is a platform for developing and distrubuting multiplayer games. It is made up of a command line interface, an api running on nodejs and in the browser, backed by a cloud runtime. 
 
