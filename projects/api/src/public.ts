@@ -4,6 +4,14 @@ import { FrontendSocket } from './fe/FrontendSocket';
 import * as commander from 'commander';
 import { get } from './utils/http';
 import { FrakasJson } from './documents/FrakasJson';
+import { LogLevel } from './utils/LogLevel';
+import chalk from 'chalk';
+
+console.logE = (...args) => { if(global.loglevel >= LogLevel.error) console.log(chalk.red(...args)); };
+console.logW = (...args) => { if(global.loglevel >= LogLevel.warning) console.log(chalk.yellow(...args)); };
+console.logI = (...args) => { if(global.loglevel >= LogLevel.info) console.log(chalk.gray(...args)); };
+console.logD = (...args) => { if(global.loglevel >= LogLevel.debug) console.log(...args); };
+console.logDiag = (...args) => { if(global.loglevel >= LogLevel.diagnosic) console.log(chalk.blue(...args)); };
 
 export interface PlayerEventContent<T> {
     playerPosition: number;
@@ -29,10 +37,16 @@ export interface IBackendApi {
     onGameStart(): Observable<void>;
 }
 
-export function createFrontend(feCallback: (n: IFrontendApi) => any) {
+export interface IOptions {
+    loglevel: LogLevel
+}
+
+export function createFrontend(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
         if (typeof window === 'undefined') return;
+
+        global.loglevel = options?.loglevel ?? LogLevel.error;
 
         document.addEventListener("DOMContentLoaded", async (event) => {
 
@@ -41,16 +55,18 @@ export function createFrontend(feCallback: (n: IFrontendApi) => any) {
             new FrontendSocket(`${wsUrl}`, remoteHttpBase, "assets", feCallback);
         });
     } catch (error) {
-        console.log(error)
+        console.logE(error)
         throw error;
     }
 }
 
-export function createFrontendHttp(feCallback: (n: IFrontendApi) => any) {
+export function createFrontendHttp(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
 
         if (typeof window === 'undefined') return;
+
+        global.loglevel = options?.loglevel ?? LogLevel.error;
 
         document.addEventListener("DOMContentLoaded", async (event) => {
 
@@ -60,18 +76,21 @@ export function createFrontendHttp(feCallback: (n: IFrontendApi) => any) {
         });
 
     } catch (error) {
-        console.log(error)
+        console.logE(error)
         throw error;
     }
 }
 
-export function createBackend(beCallback: (n: IBackendApi) => any) {
+export function createBackend(beCallback: (n: IBackendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
         if (typeof process === 'object' && typeof window === 'undefined') {
+
+            global.loglevel = options?.loglevel ?? LogLevel.error;
+
             var runAsync = async () => {
 
-                console.log("createBackend called");
+                console.logI("createBackend called.");
 
                 const { BackendSocket } = require('./be/BackendSocket');
 
@@ -96,19 +115,21 @@ export function createBackend(beCallback: (n: IBackendApi) => any) {
         }
 
     } catch (error) {
-        console.log(error)
+        console.logE(error)
         throw error;
     }
 }
 
-export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: any | null = null, response: any | null = null) {
+export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: any | null = null, response: any | null = null, options: IOptions | undefined = undefined) {
 
     try {
         if (typeof process === 'object' && typeof window === 'undefined') {
-            console.log("I am Backend")
+
+            global.loglevel = options?.loglevel ?? LogLevel.error;
+
             var runAsync = async () => {
 
-                console.log("createBackendHttp called");
+                console.logI("createBackendHttp called");
 
                 const { BackendHttp } = require('./be/BackendHttp');
 
@@ -132,25 +153,25 @@ export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: 
             runAsync()
         }
     } catch (error) {
-        console.log(error)
+        console.logE(error)
         throw error;
     }
 }
 
 async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string, gamePrimaryName: string }> {
 
-    console.log("setFrontend called");
+    console.logI("setFrontend called");
 
     var config = await get("frakas.json") as FrakasJson;
 
-    console.log("GET frakas.json", config);
+    console.logD("GET frakas.json", config);
 
     var isLocalHost = getParameterByName("remote-host") == "false";
     var gamePrimaryName = getParameterByName("game-primary-name") ?? ""
 
     var hostName = isLocalHost || !config.remoteHost ? "localhost" : config.remoteHost;
 
-    var wsUrl =  location.protocol === 'https:' ? `wss://${hostName}/ws` : `ws://${hostName}:${config.webPort}/ws`
+    var wsUrl = location.protocol === 'https:' ? `wss://${hostName}/ws` : `ws://${hostName}:${config.webPort}/ws`
 
     var fill = config.fillScreen;
     var ratio = +config.screenRatio;
@@ -161,9 +182,9 @@ async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string
         wsUrl = `${wsUrl}/${gamePrimaryName}`;
     }
 
-    console.log(`ws-url:${wsUrl}`);
-    console.log(`fill-screen:${fill}`);
-    console.log(`screen-ratio:${ratio}`);
+    console.logDiag(`ws-url:${wsUrl}`);
+    console.logD(`fill-screen:${fill}`);
+    console.logD(`screen-ratio:${ratio}`);
 
     _setupGameWindow(fill, ratio);
 

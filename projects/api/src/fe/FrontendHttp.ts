@@ -18,7 +18,7 @@ export class FrontendHttp {
   constructor(private _gamePrimaryName: string, private _remoteBackendUrl: string, assetsRoot: string, feCallback: (n: IFrontendApi) => any) {
 
     // Create Http Connection.
-    console.log(`Connecting to http backend: ${_remoteBackendUrl}`);
+    console.logD(`Connecting to http backend: ${_remoteBackendUrl}`);
 
     this._container = new PlayerContainer(assetsRoot, feCallback);
 
@@ -33,7 +33,7 @@ export class FrontendHttp {
 
     var connectionId = conectionRes[0].content;
 
-    console.log("connectionId: ", connectionId);
+    console.logD("connectionId: ", connectionId);
 
     this._queueSendEvent
       .pipe(
@@ -57,7 +57,7 @@ export class FrontendHttp {
     // Listen for messages
     this._queueReceiveEvent
       .subscribe(event => {
-        console.log(event.topic, event);
+        console.logDiag(event.topic, event);
 
         switch (event.topic) {
           case Topic.connect:

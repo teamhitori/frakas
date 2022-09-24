@@ -47,6 +47,7 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
         remoteHost: ""
     }
 
+
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
     await run("tsc --init", "Initializing Typescript..");
@@ -60,6 +61,15 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
     await fs.promises.writeFile('src/index.ts', code);
     await fs.promises.writeFile('.frignore', ignore);
     await fs.promises.writeFile('webpack.config.js', webpackConfig);
+
+    try {
+        const { dirname } = require('path');
+        const appDir = dirname(require?.main?.filename);
+        fs.copyFileSync(path.resolve(appDir, 'favicon.ico'), 'favicon.ico');
+    } catch (error) {
+        console.log(chalk.yellow("unable to copy favicon"));
+    }
+
 
     // update package.json
     let rawdata = fs.readFileSync('package.json').toString();
@@ -260,7 +270,8 @@ console.log("frakas.json: ", config)
 
 var clientConfig = {
     target: 'web',
-    devtool: 'inline-source-map',
+    mode: 'development',
+    devtool: 'eval',
     entry: {
         client: config.entryPoint
     },
@@ -379,6 +390,9 @@ var clientConfig = {
             },
             {
                 from: 'frakas.json'
+            },
+            {
+                from: 'favicon.ico'
             }
         ]
     })
@@ -388,7 +402,8 @@ var clientConfig = {
 
 var serverConfig = {
     target: 'node',
-    devtool: 'inline-source-map',
+    mode: 'development',
+    devtool: 'eval',
     entry: {
         server: config.entryPoint
     },

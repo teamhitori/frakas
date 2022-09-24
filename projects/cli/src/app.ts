@@ -54,6 +54,11 @@ yargs
             // } else {
             //     console.log(chalk.yellow(`${path.resolve(cwd, 'frakas.json')} does not exist`));
             // }
+
+            if(argv.verbose) {
+                console.log(chalk.blue("== VERBOSE =="));
+            }
+
             var appConfig = getFrakasJson();
             await serve(appConfig, __dirname, argv);
 
@@ -123,7 +128,6 @@ yargs
     //     await watchAll(appConfig, __dirname, argv);
     // })
     .command("push", "Push local files to Frakas Platform (requires login)", () => { }, async (argv) => {
-
         var appConfig = await getFrakasJson();
         await push(appConfig);
     })

@@ -1,17 +1,15 @@
 
 import { Observable, Subject } from 'rxjs';
 import { IBackendApi, PlayerEventContent } from '../public';
+import { LogLevel } from '../utils/LogLevel';
 
 export class GameContainer {
 
     private _sendToPlayerObservable: Subject<{ [id: string]: any; }> | null = null;
     private _sendToAllObservable: Subject<any> | null = null;
-
     private _loopActive = false;
-
     private _playerList: { [id: string]: any; } = {};
     private _nextPos = 0;
-
     private _onPlayerEvent: Subject<PlayerEventContent<any>> = new Subject();
     private _onGameLoop: Subject<any> = new Subject();
     private _onPlayerEnter: Subject<number> = new Subject();
@@ -28,13 +26,19 @@ export class GameContainer {
                     
                     for (let connectionId in this._playerList) {
                         if (this._playerList[connectionId] == content.playerPosition) {
-                            // console.log("sendToPlayer", content, this._playerList, this._sendToPlayerObservable);
+
+                            console.logDiag("sendToPlayer", content);
 
                             this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": content.playerState });
                         }
                     }
                 },
                 sendToAll: (state: any) => {
+
+                    if(global.loglevel >= LogLevel.diagnosic) {
+                        console.logDiag("sendToAll", JSON.stringify(state));
+                    }
+                    
                     this._sendToAllObservable?.next(state);
                 },
                 onPlayerEvent: () => {
@@ -60,13 +64,13 @@ export class GameContainer {
             beCallback(backendApi);
 
         } catch (error) {
-            console.log(error);
+            console.logE(error);
         }
     }
 
     public startGame() {
         if (!this._loopActive) {
-            console.log(`startGame called`);
+            console.logI(`startGame called`);
 
             this._loopActive = true;
 
@@ -85,7 +89,7 @@ export class GameContainer {
             }
 
         } else {
-            console.log(`startGame called, however game already started, ignoring..`);
+            console.logW(`startGame called, however game already started, ignoring..`);
         }
     }
 
@@ -123,13 +127,13 @@ export class GameContainer {
                     if (connectionId == connectionIdIn) {
                         existingUser = true;
                         nextPos = this._playerList[connectionIdIn];
-                        console.log(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
+                        console.logI(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
 
                     }
                 }
 
                 if (!existingUser) {
-                    console.log(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
+                    console.logI(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
                     this._nextPos++;
                 }
 
@@ -139,7 +143,7 @@ export class GameContainer {
                 resolve(JSON.stringify({ position: this._playerList[connectionIdIn] }));
 
             } catch (ex) {
-                console.log(ex);
+                console.logE(ex);
                 reject(ex);
             }
         });
@@ -149,7 +153,7 @@ export class GameContainer {
         return new Promise((resolve, reject) => {
             try {
 
-                console.log(`### USER EXITED [${connectionIdIn}] ###`);
+                console.logI(`### USER EXITED [${connectionIdIn}] ###`);
 
                 for (const connectionId in this._playerList) {
                     if (connectionId == connectionIdIn) {
@@ -163,13 +167,13 @@ export class GameContainer {
                             playerCount++;
                         }
 
-                        console.log(`Removing existing connection ${connectionIdIn}, new user count: ${playerCount}`);
+                        console.logD(`Removing existing connection ${connectionIdIn}, new user count: ${playerCount}`);
                     }
                 }
 
                 resolve("");
             } catch (ex) {
-                console.log(ex);
+                console.logE(ex);
                 reject(ex);
             }
         });
@@ -183,16 +187,11 @@ export class GameContainer {
 
             if(isNaN(playerPosition)) return;
 
-            // if(events.length) {
-            //     console.log(`GameContainer.playerEvent connectionId: ${connectionId}, content: ${content}, playerList: `, this._playerList);         
-            // }
+            if(events.length) {
+                console.logDiag(`playerEvent connectionId: ${connectionId}, playerPosition: ${playerPosition} content: ${content}, playerList: `, this._playerList);         
+            }
 
             for (const event of events) {
-
-                // console.log(`GameContainer.playerEvent calling this._onPlayerEvent.next`, {
-                //     playerPosition: playerPosition,
-                //     playerState: event
-                // });
 
                 this._onPlayerEvent.next(<PlayerEventContent<any>>{
                     playerPosition: playerPosition,
@@ -200,7 +199,7 @@ export class GameContainer {
                 })
             }
         } catch (ex) {
-            console.log(ex);
+            console.logE(ex);
         }
     }
 }

@@ -12,7 +12,7 @@ export async function createLocalHost(useRemote: boolean){
     var query = useRemote ? "" : '?remote-host=false';
     var hostName =  `http://localhost:${config.webPort}${query}`;
 
-    console.log(`static dir: ${clientDir}`)
+    console.logI(`static dir: ${clientDir}`)
 
     app.use(express.static( config.clientDir ?? 'public'));
 
@@ -22,7 +22,7 @@ export async function createLocalHost(useRemote: boolean){
 
     app.use(express.static(clientDir));
 
-    console.log(chalk.blue(`Serving page on ${hostName}`));    
+    console.logI(chalk.blue(`Serving page on ${hostName}`));    
 
     return app;
 }

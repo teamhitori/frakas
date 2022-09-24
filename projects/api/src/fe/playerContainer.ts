@@ -3,6 +3,7 @@ import { FrontendSocket as FrontendSocket } from "./FrontendSocket";
 import { Observable, Subject } from 'rxjs';
 import { bufferTime } from 'rxjs/operators';
 import { IPlayerEventWrapper } from "../documents/IPlayerEventWrapper";
+import { LogLevel } from "../utils/LogLevel";
 
 // import 'bootstrap/dist/css/bootstrap.min.css';
 // import 'frakas/main.css'
@@ -25,7 +26,7 @@ export class PlayerContainer {
         private _feCallback: (n: IFrontendApi) => any
     ) {
 
-        console.log(`create playerContainer`);
+        console.logD(`create playerContainer`);
 
         var playerEnter: () => void;
         //var gameStop: () => void;
@@ -52,9 +53,13 @@ export class PlayerContainer {
                 sendToBackend: (state: any) => {
 
                     if (!this.playerEntered) {
-                        console.log("Event not sent, please call frontentApi.playerEnter() to init backend connection")
+                        console.logW("Event not sent, please call frontentApi.playerEnter() to init backend connection")
                         return;
                 
+                    }
+
+                    if(global.loglevel >= LogLevel.diagnosic){
+                        console.logDiag("sendToBackend", JSON.stringify(state));
                     }
                     
                     this._notifyPlayerEvent.next(state);
@@ -74,19 +79,30 @@ export class PlayerContainer {
 
             this._feCallback(frontendApi);
         } catch (error) {
-            console.log(error);
+            console.logE(error);
         }
 
     }
 
     public publicEvent(message: any) {
+
         if (!this.playerEntered) return;
-        var state = JSON.parse(message)
-        this._onPublicEvent.next(state)
+        var state = JSON.parse(message);
+
+        console.logDiag("publicEvent", message);
+
+        this._onPublicEvent.next(state);
     }
 
     public privateEvent(message: any) {
-        this._onPrivateEvent.next(JSON.parse(message));
+
+        if (!this.playerEntered) return;
+
+        var state = JSON.parse(message);
+
+        console.logDiag("privateEvent", message);
+
+        this._onPrivateEvent.next(state);
     }
 
     public onPlayerEnter(): Promise<void> {
@@ -96,7 +112,7 @@ export class PlayerContainer {
 
     public onGameStop() {
 
-        console.log("***")
+        console.logD("***")
         
     }
 

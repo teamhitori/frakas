@@ -1,6 +1,6 @@
 {
   "name": "frakas",
-  "version": "1.0.10",
+  "version": "0.0.0",
   "description": "Frakas the multiplayer framework",
   "main": "build/app.js",
   "types": "build/app.d.ts",
@@ -11,15 +11,12 @@
     "build/*.tsx"
   ],
   "scripts": {
-    "build:api": "cd projects/api && npx tsc && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
-    "build:cli": "cd projects/cli && npm run build && node ../../scripts/merge-dep.js ../publish_config/package.json && time /t",
-    "build:pub_conf": "cd projects/publish_config && node ../../scripts/bump.js && time /t",
-    "build": "npm run build:api && npm run build:cli && npm run build:pub_conf && time /t",
-    "compose": "node scripts/compose.js && cd ./build && node ../scripts/write-version.js ./version.json && npm i && time /t",
-    "pack": "cd ./build && npm publish --access public && time /t",
-    "local-install": "cd ./build && npm i -gf && time /t",
-    "all": "npm run build && npm run compose && npm run pack && time /t",
-    "local": "npm run build && npm run compose && npm run local-install && time /t"
+    "build:api": "cd projects/api && npm run build && npm run prePublish && time /t",
+    "build:cli": "cd projects/cli && npm run build && npm run prePublish && time /t",
+    "build": "npm run build:api && npm run build:cli && time /t",
+    "all:api": "cd projects/api && npm run all && time /t",
+    "all:cli": "cd projects/api && npm run all && time /t",
+    "all": "npm run all:api && npm run all:cli && time /t"
   },
   "repository": {
     "type": "git",

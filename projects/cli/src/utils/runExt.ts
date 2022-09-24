@@ -16,7 +16,7 @@ export function spawnBackend(appconfig: FrakasJson, root: string, argv: args, op
 
     console.log(chalk.green(`spawning backend ${indexjs}`));
 
-    var be = spawn("node", [indexjs], { cwd: cwd });
+    var be = spawn("node", [indexjs, verboseTag], { cwd: cwd });
     
     be.stdout.on("data", (data: any) => {
         console.log(chalk.gray(data));

@@ -1,6 +1,6 @@
 {
   "name": "@frakas/api",
-  "version": "0.0.5",
+  "version": "0.0.11",
   "description": "Frakas multiplayer framework API",
   "files": [
     "*.js",
@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build2": "npx webpack && npx tsc --emitDeclarationOnly --outDir publish",
-    "build": "tsc --outDir publish",
+    "build": "del tsconfig.tsbuildinfo -f && tsc --outDir publish",
     "debug": "node --inspect=9229 build/app.js",
     "publish": "cd publish && npm publish --access public",
     "prePublish": "node ../../scripts/prePublish.js",

@@ -1,7 +1,7 @@
 import { bufferTime, filter, ReplaySubject } from 'rxjs';
 import { ISocketDocument } from '../documents/ISocketDocument';
 import { Topic } from '../documents/Topic';
-import { IFrontendApi } from '../public';
+import { IFrontendApi, IOptions } from '../public';
 import { PlayerContainer } from './PlayerContainer';
 
 
@@ -11,7 +11,12 @@ export class FrontendSocket {
   private _queueEvent: ReplaySubject<ISocketDocument> = new ReplaySubject();
   private _container: PlayerContainer | undefined = undefined;
 
-  constructor(private _socketBase: string, private _remoteHttpBase: string, private _assetsRoot: string, private _feCallback: (n: IFrontendApi) => any) {
+  constructor(
+    private _socketBase: string, 
+    private _remoteHttpBase: string, 
+    private _assetsRoot: string, 
+    private _feCallback: (n: IFrontendApi) => any,
+    private _options: IOptions | undefined = undefined) {
    
     this._init();
 
@@ -19,7 +24,7 @@ export class FrontendSocket {
 
   private async _init() {
      // Create WebSocket connection.
-     console.log(`Connecting to: ${this._socketBase}`);
+     console.logD(`Connecting to: ${this._socketBase}`);
  
      this._socket = new WebSocket(`${this._socketBase}`);
  
@@ -33,10 +38,19 @@ export class FrontendSocket {
          }
        );
      });
+
+     this._socket.addEventListener('close', event => {
+      this._queueEvent.subscribe(
+        message => {
+          console.logW("Websocket Closed")
+          this._socket = undefined;
+        }
+      );
+    });
  
      this._queueEvent.next(<ISocketDocument>{
        topic: Topic.ping,
-       content: "Drink!!"
+       content: "Ping!!"
      });
  
      // Listen for messages
@@ -48,7 +62,7 @@ export class FrontendSocket {
  
        switch (doc.topic) {
          case Topic.ping:
-           console.log(doc);
+           console.logD(doc);
            break;
          case Topic.privateEvent:
            this._privateEvent(doc);
@@ -67,7 +81,6 @@ export class FrontendSocket {
          this._queueEvent.next(<ISocketDocument>{
            topic: Topic.playerEnter
          });
- 
        });
  
  
@@ -77,7 +90,6 @@ export class FrontendSocket {
          bufferTime(100),
          filter(n => n.length > 0)
        )
- 
        .subscribe(doc => {
          this._queueEvent.next(<ISocketDocument>{
            topic: Topic.playerEvent,

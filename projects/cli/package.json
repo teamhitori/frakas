@@ -1,6 +1,6 @@
 {
   "name": "@frakas/cli",
-  "version": "0.0.31",
+  "version": "0.0.37",
   "description": "Frakas multiplayer framework CLI",
   "main": "app.js",
   "files": [
@@ -13,7 +13,7 @@
   ],
   "scripts": {
     "build-webpack": "npx webpack && tsc --emitDeclarationOnly --outDir publish",
-    "build": "tsc --moduleResolution \"node\" --module \"commonjs\" --allowJs --outDir publish && node ../../scripts/copy.js bin publish",
+    "build": "del tsconfig.tsbuildinfo -f && tsc --moduleResolution \"node\" --module \"commonjs\" --allowJs --outDir publish && node ../../scripts/copy.js bin publish",
     "debug": "node --inspect=9229 build/app.js",
     "publish": "cd publish && npm publish --access public",
     "publish-local": "cd publish && npm i -gf",
