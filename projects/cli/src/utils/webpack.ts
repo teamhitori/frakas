@@ -6,40 +6,15 @@ import fs from 'fs';
 
 // mine
 import { args } from '../documents/args';
-import { spawn } from 'child_process';
 
 export function buildWebpack(args: args, callbackStart: () => void, callbackComplete: (errors: boolean) => void) {
 
     var buildStart = Date.now();
 
     var cwd = process.cwd();
-    var entrypointPath = path.resolve(cwd, args.webpackConfig); //"webpack.config"; // args.webpackConfig; //
+    var entrypointPath = path.resolve(cwd, args.webpackConfig); 
 
     console.log(`Entrypoint: ${entrypointPath}`);
-
-    // if(!fs.existsSync(entrypointPath)){
-    //     console.log(chalk.red(`Cannot find webpack config file ${entrypointPath}`))
-    // }
-
-    // console.log(chalk.green(`spawning webpack`));
-
-    // var be = spawn("npx", [], { cwd: cwd });
-
-    // be.stdout.on("data", (data: any) => {
-    //     console.log(chalk.gray(data));
-    // });
-
-    // be.stderr.on("data", data => {
-    //     console.log(chalk.gray(data));
-    // });
-
-    // be.on('error', (error) => {
-    //     console.log(chalk.red(error));
-    // });
-
-    // be.on("close", async code => {
-    //     console.log(chalk.blue("Backend has stopped"));
-    // });
 
     var config = require(entrypointPath)
 
@@ -71,6 +46,10 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
 
         callbackStart()
     });
+
+    if(args.dryRun) return;
+
+    console.log(chalk.blue("Watch Started"));
 
     compiler.watch({
         poll: 300

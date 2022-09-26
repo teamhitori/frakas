@@ -15,8 +15,6 @@ import { ChildProcessWithoutNullStreams } from 'child_process';
 export async function serve(appconfig: FrakasJson, root: string, args: args) {
     console.info(`start server on :${appconfig.webPort}`);
 
-    console.log(chalk.blue("Watch Started"));
-
     var cwd = process.cwd();
     var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
     var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;

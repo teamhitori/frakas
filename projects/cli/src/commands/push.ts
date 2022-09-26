@@ -15,9 +15,11 @@ import chalk from "chalk";
 import * as mmm from 'mmmagic';
 import { IAssetFile } from "../documents/IAssetFile";
 import fs from 'fs';
+import { FrakasJson } from "@frakas/api/documents/FrakasJson";
+import { args } from '../documents/args';
 
 
-export async function push(config: any) {
+export async function push(config: FrakasJson, args: args) {
 
     if (!isValidGameName(config.gameName)) {
         console.log(chalk.red(`Invalid Game Name: ${config.gameName}`));
@@ -26,13 +28,16 @@ export async function push(config: any) {
 
     var publishedGameName = config.gameName.toLocaleLowerCase().split(" ").join("-");
 
-    var ignore = [`node_modules`,`bin`,`obj`,`build`];
+    var ignore = [`node_modules`, `bin`, `obj`, `build`];
 
-    if(fs.existsSync(".frignore")) {
+    if (fs.existsSync(".frignore")) {
+        args.verbose && console.log(chalk.gray("Found .frignore file"));
         var ignoreContents = await readFile(".frignore");
-        ignore = ignoreContents.toString().split(os.EOL);
+        ignore = ignoreContents.toString().split(/\r?\n/);
     }
-    
+
+    args.verbose && console.log(chalk.gray(ignore));
+
     var token = await getAccessToken();
 
     const agent = new https.Agent({
@@ -43,7 +48,7 @@ export async function push(config: any) {
         Authorization: `Bearer ${token}`
     };
 
-    var webConfig:AxiosRequestConfig = {
+    var webConfig: AxiosRequestConfig = {
         headers: authHeader,
         httpsAgent: agent,
         timeout: 60000
@@ -102,7 +107,7 @@ export async function push(config: any) {
 
     //console.log(`sasToken:${sasToken}`);
 
-    ignore = ignore.filter(s => s);
+    // ignore = ignore.filter(s => s);
 
     //console.log(ignore);
 
@@ -111,17 +116,22 @@ export async function push(config: any) {
     var codeFiles = [];
     var assetFiles: IAssetFile[] = []
 
+    console.log(chalk.gray(`Prepare upload:`));
+
+    var assetRoot: string[] = config.assetsRoot ?? ["assets"];
+
+    args.verbose && console.log(chalk.gray("assetRoot:"), assetRoot);
+
     for (const path of paths) {
         var split = path.split("/");
         var fileName = split[split.length - 1];
         if (existsSync(path)) {
-            console.log(chalk.gray(`Uploading: ${path}`));
 
             var content = await readFile(path);
 
-            if (path.startsWith(`assets/`)) {
+            if (assetRoot.some(r => path.startsWith(`${r}/`))) {
                 var data = fs.readFileSync(path)
-
+                console.log(chalk.gray(`<asset>: ${path}`));
                 assetFiles.push(<IAssetFile>{
                     blob: data,
                     contentType: await getMime(path),
@@ -129,10 +139,9 @@ export async function push(config: any) {
                     gameName: publishedGameName,
                     storageUrl: `${storageBase}/${username}-${publishedGameName}`,
                     sasToken: sasToken
-                })
-
-
+                });
             } else {
+                console.log(chalk.gray(`<code>: ${path}`));
                 codeFiles.push(<ICodeFile>{
                     code: content.toString(),
                     fileName: path,
@@ -150,43 +159,49 @@ export async function push(config: any) {
         gameThumbnail: config.gameThumbnail ?? ""
     }
 
-    await axios.post(`${getWebRoot()}/api/editorApi/upsert-config/${publishedGameName}`, gameConfig, webConfig)
-        .then(function (response) {
-            // handle success
-            console.log(`Code push complete`);
+    if (!args.dryRun) {
+        await axios.post(`${getWebRoot()}/api/editorApi/upsert-config/${publishedGameName}`, gameConfig, webConfig)
+            .then(function (response) {
+                // handle success
+                console.log(`Code push complete`);
 
-            return response.data;
-        })
-        .catch(function (error) {
-            // handle error
-            if(isDebug()){
-                console.log(`Error upsert-config`, error);
-            }
-            console.log("There was a problem uploading config, exiting");
-            process.exit(0);
-        });
+                return response.data;
+            })
+            .catch(function (error) {
+                // handle error
+                if (isDebug()) {
+                    console.log(`Error upsert-config`, error);
+                }
+                console.log("There was a problem uploading config, exiting");
+                process.exit(0);
+            });
 
-    await axios.post(`${webRoot}/api/editorApi/upsert-code/${publishedGameName}`, codeFiles, webConfig)
-        .then((response) => {
-            // handle success
-            console.log(`Code push complete`);
+        await axios.post(`${webRoot}/api/editorApi/upsert-code/${publishedGameName}`, codeFiles, webConfig)
+            .then((response) => {
+                // handle success
+                console.log(`Code push complete`);
 
-            return response.data;
-        })
-        .catch(function (error) {
-            // handle error
-            if(isDebug()){
-                console.log(`Error upsert-code`, error);
-            }
-            console.log("There was a problem uploading code, exiting");
-            process.exit(0);
-        });
+                return response.data;
+            })
+            .catch(function (error) {
+                // handle error
+                if (isDebug()) {
+                    console.log(`Error upsert-code`, error);
+                }
+                console.log("There was a problem uploading code, exiting");
+                process.exit(0);
+            });
+    }
+
 
     for (const file of assetFiles) {
-        await uploadFile(file)
+        await uploadFile(file, args)
     }
 
     var pollBuild = async () => {
+
+        if (args.dryRun) return false;
+
         var isbuilding = await (await axios.get(`${webRoot}/api/editorApi/poll-build/${publishedGameName}`, webConfig)).data;
 
         return isbuilding;
@@ -213,7 +228,7 @@ export async function push(config: any) {
     console.log("Remote Build Complete");
 }
 
-async function uploadFile(file: IAssetFile) {
+async function uploadFile(file: IAssetFile, args: args) {
     const agent = new https.Agent({
         rejectUnauthorized: false
     });
@@ -232,6 +247,9 @@ async function uploadFile(file: IAssetFile) {
     };
 
     console.log(`Uploading ${file.storageUrl}/${file.fileName}`);
+
+    if (args.dryRun) return;
+
     process.stdout.write(`File is 0% uploaded.`);
 
 

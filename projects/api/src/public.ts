@@ -18,22 +18,87 @@ export interface PlayerEventContent<T> {
     playerState: T;
 }
 
+/**
+ *  Front End API
+ *  Contains useful functions for passing data to the backend server and responding to server events
+ */
 export interface IFrontendApi {
+
+    /**
+     * Notify Server that Player has "Entered" game, this is the point as which the server will assign a "PlayerPosition" to the Client 
+     */
     playerEnter(): void;
+
+    /**
+     * Sends data from the Client to the backend server in the context of a Player, when this event 
+     * is received by the server it will be associated with a "PlayerPosition".
+     * @param state data to send to the backend
+     */
     sendToBackend<T>(state: T): void;
+
+    /**
+     * Observable that allows client to respond to a private (player specific) event from the server
+     */
     onPrivateEvent<T>(): Observable<T>;
+
+    /**
+     * Observable that allows client to respond to a public event from the server
+     */
     onPublicEvent<T>(): Observable<T>;
+
+    /**
+     * Promise that allows client to respond to "Game Stop" event
+     */
     onGameStop(): Promise<void>;
+
+    /**
+     * The location of the static assets folder, since this value can change based on deployment configuration, this value will always represent the correct location 
+     */
     assetsRoot: string;
 }
 
+/**
+ *  Back End API
+ *  Contains useful functions for passing data to the client and responding to client events
+ */
 export interface IBackendApi {
+
+    /**
+     * Send event data so a specific connected player client
+     * @param playerEventContent Defines event data as well as player position of client that should receive data
+     */
     sendToPlayer<T>(playerEventContent: PlayerEventContent<T>): void;
+
+    /**
+     * Send event data so all connected player clients
+     * @param state Defines event data
+     */
     sendToAll<T>(state: T): void;
+
+    /**
+     * Observable that allows server to respond to a Player specific event from the client
+     * The event is wrapped in playerEventContent<T> which defines event data as well as player position of client that sent the data
+     */
     onPlayerEvent<T>(): Observable<PlayerEventContent<T>>;
+
+    /**
+     * Observable that allows the server to respond to a "Player Enter". The event includes a number representing the new Player Position 
+     */
     onPlayerEnter(): Observable<number>;
+
+    /**
+     * Observable that allows the server to respond to a "Player Exit". The event includes a number representing the exiting Player Position 
+     */
     onPlayerExit(): Observable<number>;
+
+    /**
+     * Observable that allows the server to respond to a Game Stop Event 
+     */
     onGameStop(): Observable<void>;
+
+    /**
+     * Observable that allows the server to respond to a Game Start Event 
+     */
     onGameStart(): Observable<void>;
 }
 
@@ -41,6 +106,17 @@ export interface IOptions {
     loglevel: LogLevel
 }
 
+/**
+ * Create Frontend.
+ * Establishes frontend runtine allong with websocket connection to backend server
+ *
+ * ```ts
+ * createFrontend(async api => {
+ *   -- api: IFrontendApi
+ *
+ * }, { loglevel: LogLevel.info });
+ * ```
+ */
 export function createFrontend(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
@@ -60,6 +136,17 @@ export function createFrontend(feCallback: (n: IFrontendApi) => any, options: IO
     }
 }
 
+/**
+ * Create Frontend.
+ * Establishes frontend runtine allong with a http connection to backend server
+ *
+ * ```ts
+ * createFrontendHttp(async api => {
+ *   -- api: IFrontendApi
+ *
+ * }, { loglevel: LogLevel.info });
+ * ```
+ */
 export function createFrontendHttp(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
@@ -81,6 +168,17 @@ export function createFrontendHttp(feCallback: (n: IFrontendApi) => any, options
     }
 }
 
+/**
+ * Create Backend.
+ * Establishes backend server runtine allong with websocket connection to frontend clients
+ *
+ * ```ts
+ * createBackend(async api => {
+ *   -- api: IBackendApi
+ *
+ * }, { loglevel: LogLevel.info });
+ * ```
+ */
 export function createBackend(beCallback: (n: IBackendApi) => any, options: IOptions | undefined = undefined) {
 
     try {
@@ -120,6 +218,17 @@ export function createBackend(beCallback: (n: IBackendApi) => any, options: IOpt
     }
 }
 
+/**
+ * Create Backend.
+ * Establishes backend server runtine allong with a http connection to frontend clients
+ *
+ * ```ts
+ * createBackendHttp(async api => {
+ *   -- api: IBackendApi
+ *
+ * }, { loglevel: LogLevel.info });
+ * ```
+ */
 export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: any | null = null, response: any | null = null, options: IOptions | undefined = undefined) {
 
     try {

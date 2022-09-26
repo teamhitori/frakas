@@ -2,31 +2,35 @@
 import chalk from 'chalk';
 import fs from 'fs';
 import { exec } from 'child_process'
-import yargs from 'yargs';
 import path from "path";
+import { args } from '../documents/args';
 
 // mine
 // import { AppConfig } from '../documents/appConfig';
 import { fixGameName } from '../utils/ext';
 
-export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
+export async function init(args: args) {
 
     var cwd = process.cwd();
 
     var run = (command: string, headline: string) => {
         console.log(chalk.whiteBright(headline));
         return new Promise(resolve => {
+            if (args.dryRun) {
+                resolve({});
+                return;
+            }
             exec(command, { cwd: cwd }, async (error, stdout, stderr) => {
                 if (error) {
-                    if (argv.verbose) console.log(chalk.yellow(`${error.message}`));
+                    if (args.verbose) console.log(chalk.yellow(`${error.message}`));
                     //return;
                 }
                 if (stderr) {
-                    if (argv.verbose) console.log(chalk.yellow(`${stderr}`));
+                    if (args.verbose) console.log(chalk.yellow(`${stderr}`));
                     //return;
                 }
 
-                if (argv.verbose) console.log(chalk.gray(`${stdout}`));
+                if (args.verbose) console.log(chalk.gray(`${stdout}`));
 
                 resolve({});
             });
@@ -47,7 +51,6 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
         remoteHost: ""
     }
 
-
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
     await run("tsc --init", "Initializing Typescript..");
@@ -56,28 +59,49 @@ export async function init(argv: yargs.ArgumentsCamelCase<{}>) {
     await run("npm i webpack webpack-cli", "Installing Webpack ..");
     await run("npm i bufferutil cors file-loader copy-webpack-plugin html-webpack-plugin mini-css-extract-plugin node-gyp-build path-browserify source-map-loader ts-loader utf-8-validate", "Installing other Webpack Dependencies..");
 
-    await fs.promises.writeFile('frakas.json', JSON.stringify(config, null, 2));
-    await fs.promises.mkdir('src', { recursive: true });
-    await fs.promises.writeFile('src/index.ts', code);
-    await fs.promises.writeFile('.frignore', ignore);
-    await fs.promises.writeFile('webpack.config.js', webpackConfig);
+    if (args.dryRun || args.verbose) {
+        console.log(chalk.gray("Writefile 'frakas.json'"), config);
+        console.log(chalk.gray("mkdir src"));
+        console.log(chalk.gray("Writefile 'src/index.ts'"), code);
+        console.log(chalk.gray("Writefile '.frignore'"), ignore);
+        console.log(chalk.gray("Writefile 'webpack.config.js'"), webpackConfig);
+    }
+
+    if (!args.dryRun) {
+        await fs.promises.writeFile('frakas.json', JSON.stringify(config, null, 2));
+        await fs.promises.mkdir('src', { recursive: true });
+        await fs.promises.writeFile('src/index.ts', code);
+        await fs.promises.writeFile('.frignore', ignore);
+        await fs.promises.writeFile('webpack.config.js', webpackConfig);
+    }
+
 
     try {
         const { dirname } = require('path');
         const appDir = dirname(require?.main?.filename);
-        fs.copyFileSync(path.resolve(appDir, 'favicon.ico'), 'favicon.ico');
+        if (args.dryRun || args.verbose) {
+            console.log(chalk.gray("copy favicon.ico"));
+        }
+        if (!args.dryRun) {
+            fs.copyFileSync(path.resolve(appDir, 'favicon.ico'), 'favicon.ico');
+        }
     } catch (error) {
         console.log(chalk.yellow("unable to copy favicon"));
     }
 
 
     // update package.json
-    let rawdata = fs.readFileSync('package.json').toString();
-    let packageJson = JSON.parse(rawdata);
-    packageJson.scripts["build"] = "npx webpack";
-    packageJson.scripts["run"] = "node server/node.bundle.main.js -o";
-    var packageStr = JSON.stringify(packageJson, null, 2);
-    fs.writeFileSync('package.json', packageStr)
+    if (args.dryRun || args.verbose) {
+        console.log(chalk.gray("create package.json"));
+    }
+    if (!args.dryRun) {
+        let rawdata = fs.readFileSync('package.json').toString();
+        let packageJson = JSON.parse(rawdata);
+        packageJson.scripts["build"] = "npx webpack";
+        packageJson.scripts["run"] = "node server/node.bundle.main.js -o";
+        var packageStr = JSON.stringify(packageJson, null, 2);
+        fs.writeFileSync('package.json', packageStr)
+    }
 
     console.log(chalk.blue("Done!!"));
 }

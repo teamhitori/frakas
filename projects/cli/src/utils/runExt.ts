@@ -8,13 +8,15 @@ import path from 'path';
 import { args } from "../documents/args";
 import { FrakasJson } from "@frakas/api/documents/FrakasJson";
 
-export function spawnBackend(appconfig: FrakasJson, root: string, argv: args, openBrowser: boolean): ChildProcessWithoutNullStreams {
+export function spawnBackend(appconfig: FrakasJson, root: string, args: args, openBrowser: boolean): ChildProcessWithoutNullStreams | undefined {
 
     var cwd = process.cwd();
-    var verboseTag = argv.verbose ? "-v" : "";
+    var verboseTag = args.verbose ? "-v" : "";
     var indexjs = path.resolve(appconfig.serverDir, `server.js`);
 
     console.log(chalk.green(`spawning backend ${indexjs}`));
+
+    if(args.dryRun) return;
 
     var be = spawn("node", [indexjs, verboseTag], { cwd: cwd });
     

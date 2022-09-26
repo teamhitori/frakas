@@ -10,6 +10,7 @@ export interface FrakasJson {
     "clientDir": string;
     "serverDir": string;
     "remoteHost": string;
+    "assetsRoot": string[];
 }
 
 export function getFrakasJson(): FrakasJson {
