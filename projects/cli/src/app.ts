@@ -34,7 +34,7 @@ console.log(
 
 
 yargs
-    //.option("verbose", { alias: "v", describe: "verbose logging", type: 'boolean', default: false })
+    .option("verbose", { alias: "v", describe: "verbose logging", type: 'boolean', default: false })
     .command("init", "Initialize Frakas",
         (yargs) => yargs
             .positional("webpack-config", { alias: "c", describe: "Webpack config file name", type: 'string', default: 'webpack.config.js' })
@@ -61,6 +61,9 @@ yargs
             }
 
             var appConfig = getFrakasJson();
+
+            console.log(chalk.blue("Watch Started"));
+            
             await serve(appConfig, __dirname, argv);
 
         })

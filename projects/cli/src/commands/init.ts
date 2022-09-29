@@ -286,35 +286,40 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const fs = require('fs');
 const path = require('path');
+const { NONAME } = require('dns');
 var cwd = process.cwd();
 const configRaw = fs.readFileSync('frakas.json');
 const config = JSON.parse(configRaw);
+
+// Overrides
+config.serverDir = config.serverDir ?? "server";
+config.clientDir = config.clientDir ?? \`public\`
 
 console.log("frakas.json: ", config)
 
 var clientConfig = {
     target: 'web',
     mode: 'development',
-    devtool: 'eval',
+    devtool: 'hidden-source-map',
     entry: {
         client: config.entryPoint
     },
     module: {
         rules: [
             {
-                test: /\.ts?$/,
+                test: /.ts?$/,
                 use: 'ts-loader',
                 exclude: /node_modules/
             },
             {
-                test: /\.css$/,
+                test: /.css$/,
                 use: [
                     MiniCssExtractPlugin.loader, // instead of style-loader
                     'css-loader'
                 ]
             },
             {
-                test: /\.ttf$/,
+                test: /.ttf$/,
                 use: ['file-loader']
             }
         ],
@@ -342,22 +347,21 @@ var clientConfig = {
             "url": false,
             "util": false,
             "process": false
-          },
-          fallback: {
+        },
+        fallback: {
             "path": require.resolve("path-browserify")
-          },
-        
+        },
         modules: [
             /* assuming that one up is where your node_modules sit,
                relative to the currently executing script
             */
             path.join(__dirname, './node_modules')
-          ]
+        ]
     },
     output: {
         globalObject: 'self',
         filename: '[name].js',
-        path: path.resolve(__dirname, config.clientDir)
+        path: path.resolve(__dirname, config.serverDir, config.clientDir)
     },
     plugins: [new HtmlWebpackPlugin({
         title: 'Custom template',
@@ -369,8 +373,20 @@ var clientConfig = {
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <meta http-equiv="X-UA-Compatible" content="ie=edge">
                     <title>\${config.gameName}</title>
-                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <meta property="og:image" itemprop="image" content="assets/\${config.gameThumbnail}" />
+                    <meta property="og:type" content="website" />
+                    <meta property="og:title" content="\${config.gameName}" />
+                    <meta property="og:site_name" content="\${config.gameName}">
+                    <meta property="og:description" content="\${config.gameName}" />
+                    <link href="assets/bootstrap.min.css" rel="stylesheet">
                     <style>
+
+                    @font-face {
+                        font-family: gooddog;
+                        src: url(assets/gooddog.otf);
+                        font-weight: bold;
+                    }
+
                     #renderCanvas {
                         position: relative;
                         top: 0px;
@@ -380,6 +396,7 @@ var clientConfig = {
                         border: 1px solid white;
                         background-color: #383838;
                         height: 100%;
+
                       }
                       
                       .cavas-holder-inner {
@@ -394,6 +411,7 @@ var clientConfig = {
                         margin:0;
                         overflow:hidden;
                         overscroll-behavior-y: contain;
+                        font-family: gooddog;
                       }
                     </style>
                 </head>
@@ -401,6 +419,15 @@ var clientConfig = {
                   <div class="cavas-holder-inner" id="renderCanvas-holder">
                     <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
                   </div>
+                  
+                <script async src="https://www.googletagmanager.com/gtag/js?id=G-GFTBDJDLK0"></script>
+                <script>
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', 'G-GFTBDJDLK0');
+                </script>
+
                 </body>
                 </html>\`
     }),
@@ -409,7 +436,7 @@ var clientConfig = {
         patterns: [
             {
                 from: 'assets',
-                to:'assets',
+                to: 'assets',
                 noErrorOnMissing: true
             },
             {
@@ -419,43 +446,45 @@ var clientConfig = {
                 from: 'favicon.ico'
             }
         ]
-    })
-    ],
-    
+    })],
+    watch: true,
+    watchOptions: {
+        ignored: [config.clientDir, config.serverDir],
+    }
 };
 
 var serverConfig = {
     target: 'node',
     mode: 'development',
-    devtool: 'eval',
+    devtool: 'hidden-source-map',
     entry: {
         server: config.entryPoint
     },
     module: {
         rules: [
-        {
-            test: /\.(ts|tsx)$/,
-            use: [
-                {
-                    loader: 'ts-loader',
-                    options: {
-                        transpileOnly: true,
-                    },
-                }
-            ],
-            exclude: /node_modules/
-        },
-        {
-            test: /\.js$/,
-            enforce: "pre",
-            use: ["source-map-loader"],
-            exclude: /node_modules/
-        },
+            {
+                test: /.(ts|tsx)$/,
+                use: [
+                    {
+                        loader: 'ts-loader',
+                        options: {
+                            transpileOnly: true,
+                        },
+                    }
+                ],
+                exclude: /node_modules/
+            },
+            {
+                test: /.js$/,
+                enforce: "pre",
+                use: ["source-map-loader"],
+                exclude: /node_modules/
+            },
 
-        {
-            test: /\.ttf$/,
-            use: ['file-loader']
-        }
+            {
+                test: /.ttf$/,
+                use: ['file-loader']
+            }
         ],
     },
     resolve: {
@@ -465,7 +494,7 @@ var serverConfig = {
                relative to the currently executing script
             */
             path.join(__dirname, './node_modules')
-          ]
+        ]
     },
     output: {
         globalObject: 'self',
@@ -478,7 +507,11 @@ var serverConfig = {
                 from: 'frakas.json'
             }
         ]
-    })]
+    })],
+    watch: true,
+    watchOptions: {
+        ignored: [config.clientDir, config.serverDir],
+    }
 };
 
 module.exports = [

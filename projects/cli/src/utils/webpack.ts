@@ -49,8 +49,6 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
 
     if(args.dryRun) return;
 
-    console.log(chalk.blue("Watch Started"));
-
     compiler.watch({
         poll: 300
 
