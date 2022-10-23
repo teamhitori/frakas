@@ -48,7 +48,7 @@ export async function init(args: args) {
 
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
-    await run("npm i @frakas/api@0.1.7", "Installing @frakas/api@0.1.7 ..");
+    await run("npm i @frakas/api@0.1.8", "Installing @frakas/api@0.1.8 ..");
     await run("npm i babylonjs babylonjs-gui babylonjs-loaders", "Installing Bobaylonjs ..");
     await run("npm i webpack webpack-cli", "Installing Webpack ..");
     await run("npm i rxjs", "installing reactive extensions..");
@@ -73,21 +73,6 @@ export async function init(args: args) {
         await fs.promises.writeFile('.frignore', ignore);
         await fs.promises.writeFile('webpack.config.js', webpackConfig);
     }
-
-
-    try {
-        const { dirname } = require('path');
-        const appDir = dirname(require?.main?.filename);
-        if (args.dryRun || args.verbose) {
-            console.log(chalk.gray("copy favicon.ico"));
-        }
-        if (!args.dryRun) {
-            fs.copyFileSync(path.resolve(appDir, 'favicon.ico'), 'favicon.ico');
-        }
-    } catch (error) {
-        console.log(chalk.yellow("unable to copy favicon"));
-    }
-
 
     // update package.json
     if (args.dryRun || args.verbose) {
@@ -436,9 +421,6 @@ var clientConfig = {
             },
             {
                 from: 'frakas.json'
-            },
-            {
-                from: 'favicon.ico'
             }
         ]
     })],

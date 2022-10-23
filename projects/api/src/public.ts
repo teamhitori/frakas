@@ -300,7 +300,7 @@ async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string
     var isLocalHost = getParameterByName("remote-host") == "false";
     var gamePrimaryName = getParameterByName("game-primary-name") ?? ""
 
-    var hostName = isLocalHost || !config.remoteHost ? "localhost" : config.remoteHost;
+    var hostName = isLocalHost || !config.remoteHost ? window.location.host : config.remoteHost;
 
     var wsUrl = location.protocol === 'https:' ? `wss://${hostName}/ws` : `ws://${hostName}:${config.webPort}/ws`
 
