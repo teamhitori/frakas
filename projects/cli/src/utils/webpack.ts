@@ -12,11 +12,11 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
     var buildStart = Date.now();
 
     var cwd = process.cwd();
-    var entrypointPath = path.resolve(cwd, args.webpackConfig); 
+    var entrypointPath = path.resolve(cwd, args.webpackConfig);
 
     console.log(`Entrypoint: ${entrypointPath}`);
 
-    var config = require(entrypointPath)
+    var config = require(entrypointPath);
 
     const compiler = webpack(config, (err, stats: any) => {
 
@@ -28,7 +28,7 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
 
         for (const stat of stats.stats) {
 
-            if(stat.compilation.errors.length){
+            if (stat.compilation.errors.length) {
                 hasErrors = true;
 
                 console.log(chalk.red("Compilation Errors"));
@@ -43,16 +43,14 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
     compiler.hooks.watchRun.tap('watchRun', (context) => {
         buildStart = Date.now();
         console.log(chalk.whiteBright(`[${new Date(buildStart).toLocaleString()}] Build started `));
+        
 
         callbackStart()
     });
 
-    if(args.dryRun) return;
+    if (args.dryRun) return;
 
-    compiler.watch({
-        poll: 300
-
-    }, (err: Error | null | undefined, stats: Stats | undefined) => { // [Stats Object](#stats-object)
+    compiler.run(((err: Error | null | undefined, stats: Stats | undefined) => { // [Stats Object](#stats-object)
 
         if (args.verbose && stats) console.log(stats)
 
@@ -61,5 +59,19 @@ export function buildWebpack(args: args, callbackStart: () => void, callbackComp
             if (err) console.log(chalk.red(err))
             return
         }
-    });
+    }))
+
+    // compiler.watch({
+    //     poll: 300
+
+    // }, (err: Error | null | undefined, stats: Stats | undefined) => { // [Stats Object](#stats-object)
+
+    //     if (args.verbose && stats) console.log(stats)
+
+    //     if (stats?.compilation.errors.length) {
+    //         console.log(chalk.yellow(stats?.compilation.errors));
+    //         if (err) console.log(chalk.red(err))
+    //         return
+    //     }
+    // });
 }

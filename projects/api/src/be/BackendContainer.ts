@@ -1,71 +1,49 @@
 
 import { Observable, Subject } from 'rxjs';
-import { IBackendApi, PlayerEventContent } from '../public';
+import { BackendTopic, IBackendApi } from '../public';
 import { LogLevel } from '../utils/LogLevel';
 
-export class GameContainer {
+export class BackendContainer {
 
-    private _sendToPlayerObservable: Subject<{ [id: string]: any; }> | null = null;
+    private _sendToPlayerObservable: Subject<{ connectionId: string, state: any }> | null = null;
     private _sendToAllObservable: Subject<any> | null = null;
     private _loopActive = false;
     private _playerList: { [id: string]: any; } = {};
     private _nextPos = 0;
-    private _onPlayerEvent: Subject<PlayerEventContent<any>> = new Subject();
-    private _onGameLoop: Subject<any> = new Subject();
-    private _onPlayerEnter: Subject<number> = new Subject();
-    private _onPlayerExit: Subject<number> = new Subject();
-    private _onGameStop: Subject<any> = new Subject()
-    private _onGameStart: Subject<any> = new Subject()
+    private _onEvent: Subject<{ playerPosition: number | undefined, topic: BackendTopic, state: any | undefined }> = new Subject();
+    private _backendApi: IBackendApi;
 
-    public constructor(beCallback: (n: IBackendApi) => any) {
+    public constructor() {
+        this._backendApi = <IBackendApi>{
+            sendToPlayer: (playerPosition: number, event: any) => {
 
-        try {
+                for (let connectionId in this._playerList) {
+                    if (this._playerList[connectionId] == playerPosition) {
 
-            var backendApi = <IBackendApi>{
-                sendToPlayer: (content: PlayerEventContent<any>) => {
-                    
-                    for (let connectionId in this._playerList) {
-                        if (this._playerList[connectionId] == content.playerPosition) {
-
-                            console.logDiag("sendToPlayer", content);
-
-                            this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": content.playerState });
+                        if (global.loglevel >= LogLevel.diagnosic) {
+                            console.logDiag("sendToPlayer", JSON.stringify(event));
                         }
-                    }
-                },
-                sendToAll: (state: any) => {
 
-                    if(global.loglevel >= LogLevel.diagnosic) {
-                        console.logDiag("sendToAll", JSON.stringify(state));
+                        this._sendToPlayerObservable?.next({ "connectionId": connectionId, "state": event });
                     }
-                    
-                    this._sendToAllObservable?.next(state);
-                },
-                onPlayerEvent: () => {
-                    return this._onPlayerEvent;
-                },
-                onGameLoop: () => {
-                    return this._onGameLoop;
-                },
-                onPlayerEnter: () => {
-                    return this._onPlayerEnter;
-                },
-                onPlayerExit: () => {
-                    return this._onPlayerExit;
-                },
-                onGameStop: () => {
-                    return this._onGameStop;
-                },
-                onGameStart: () => {
-                    return this._onGameStart;
                 }
-            };
+            },
+            sendToAll: (state: any) => {
 
-            beCallback(backendApi);
+                if (global.loglevel >= LogLevel.diagnosic) {
+                    console.logDiag("sendToAll", JSON.stringify(state));
+                }
 
-        } catch (error) {
-            console.logE(error);
-        }
+                this._sendToAllObservable?.next(state);
+            },
+            receiveEvent: () => {
+                return this._onEvent;
+            }
+        };
+    }
+
+    public getBackendApi(): IBackendApi {
+        return this._backendApi;
     }
 
     public startGame() {
@@ -83,7 +61,7 @@ export class GameContainer {
             }
 
             try {
-                this._onGameStart.next({});
+                this._onEvent.next({ topic: BackendTopic.start, state: undefined, playerPosition: undefined });
             } catch (ex: any) {
                 this._loopActive = false;
             }
@@ -93,7 +71,7 @@ export class GameContainer {
         }
     }
 
-    public sendToPlayerObservable(): Observable<any> {
+    public sendToPlayerObservable(): Observable<{ connectionId: string, state: any }> {
         return this._sendToPlayerObservable!!;
     }
 
@@ -102,7 +80,7 @@ export class GameContainer {
     }
 
     public destroyGame(): Promise<boolean> {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (this._loopActive) {
                 this._playerList = {};
                 this._nextPos = 0;
@@ -127,18 +105,18 @@ export class GameContainer {
                     if (connectionId == connectionIdIn) {
                         existingUser = true;
                         nextPos = this._playerList[connectionIdIn];
-                        console.logI(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
+                        console.logD(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
 
                     }
                 }
 
                 if (!existingUser) {
-                    console.logI(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
+                    console.logD(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
                     this._nextPos++;
                 }
 
                 this._playerList[connectionIdIn] = nextPos;
-                this._onPlayerEnter.next(nextPos);
+                this._onEvent.next({ topic: BackendTopic.playerEnter, state: undefined, playerPosition: nextPos });
 
                 resolve(JSON.stringify({ position: this._playerList[connectionIdIn] }));
 
@@ -158,7 +136,7 @@ export class GameContainer {
                 for (const connectionId in this._playerList) {
                     if (connectionId == connectionIdIn) {
 
-                        this._onPlayerExit.next(this._playerList[connectionIdIn]);
+                        this._onEvent.next({ topic: BackendTopic.playerExit, state: undefined, playerPosition: this._playerList[connectionIdIn] });
 
                         delete this._playerList[connectionIdIn];
 
@@ -183,19 +161,20 @@ export class GameContainer {
         try {
             var events = JSON.parse(content);
 
-            var playerPosition =  +this._playerList[connectionId]
+            var playerPosition = +this._playerList[connectionId]
 
-            if(isNaN(playerPosition)) return;
+            if (isNaN(playerPosition)) return;
 
-            if(events.length) {
-                console.logDiag(`playerEvent connectionId: ${connectionId}, playerPosition: ${playerPosition} content: ${content}, playerList: `, this._playerList);         
+            if (events.length) {
+                console.logDiag(`playerEvent connectionId: ${connectionId}, playerPosition: ${playerPosition} content: ${content}, playerList: `, this._playerList);
             }
 
             for (const event of events) {
 
-                this._onPlayerEvent.next(<PlayerEventContent<any>>{
-                    playerPosition: playerPosition,
-                    playerState: event
+                this._onEvent.next({
+                    topic: BackendTopic.playerEvent,
+                    state: event,
+                    playerPosition: playerPosition
                 })
             }
         } catch (ex) {

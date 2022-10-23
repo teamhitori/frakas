@@ -15,12 +15,8 @@ import { ChildProcessWithoutNullStreams } from 'child_process';
 export async function serve(appconfig: FrakasJson, root: string, args: args) {
     console.info(`start server on :${appconfig.webPort}`);
 
-    var cwd = process.cwd();
-    var entrypointPath = path.resolve(cwd, appconfig.entryPoint);
     var currentBe: ChildProcessWithoutNullStreams | undefined = undefined;
     var isFirstRun = true;
-
-    console.log(`Entrypoint: ${entrypointPath}`);
 
     buildWebpack( args, () => {
         currentBe?.kill(9);
@@ -36,9 +32,6 @@ export async function serve(appconfig: FrakasJson, root: string, args: args) {
             currentBe = spawnBackend(appconfig, root, args, isFirstRun);
 
             isFirstRun = false;
-
-            //startWeb(appconfig, root, args);
         }
-
     });
 }

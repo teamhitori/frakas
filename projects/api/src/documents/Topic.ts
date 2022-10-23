@@ -11,5 +11,6 @@ export enum Topic {
   publicEvent = 9,
   gameEnd = 10,
   connect = 11,
-  imAlive = 12
+  start = 12,
+  imAlive = 13
 }

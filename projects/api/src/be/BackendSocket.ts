@@ -9,19 +9,23 @@ import chalk from 'chalk';
 import { ISocketDocument } from "../documents/ISocketDocument"
 import { Topic } from '../documents/Topic';
 import { IBackendApi } from '../public';
-import { GameContainer } from './GameContainer';
+import { BackendContainer } from './BackendContainer';
 import { getFrakasJson } from '../documents/FrakasJson';
 import { createLocalHost } from './LocalHost';
 
 export class BackendSocket {
 
     private _connections: { [name: string]: WebSocket } = {};
-    private _container: GameContainer;
+    private _container: BackendContainer;
 
-    constructor(beCallback: (n: IBackendApi) => any, private _noHost: boolean, private _remoteHost: boolean) {
+    constructor(private _noHost: boolean, private _remoteHost: boolean) {
 
-        this._container = new GameContainer(beCallback);
+        this._container = new BackendContainer();
         this._initWebsocket();
+    }
+
+    public getBackendApi(): IBackendApi {
+        return this._container.getBackendApi();
     }
 
     private async _initWebsocket() {
@@ -42,6 +46,7 @@ export class BackendSocket {
             });
 
             if(!this._noHost) {
+                console.logD("Creating localhost")
                 var app = await createLocalHost(this._remoteHost);
                 server.on('request', app)
             }
@@ -119,8 +124,6 @@ export class BackendSocket {
             throw ex;
         }
     }
-
-
 
     private _startGame(connectionId: string, ws: WebSocket) {
         try {

@@ -3,7 +3,7 @@ import { ISocketDocument } from '../documents/ISocketDocument';
 import { Topic } from '../documents/Topic';
 import { bufferTime, filter, map } from 'rxjs/operators';
 import { IFrontendApi } from '../public';
-import { PlayerContainer } from './PlayerContainer';
+import { FrontendContainer } from './FrontendContainer';
 import { IHttpDocument } from '../documents/IHttpDocument';
 import { post } from '../utils/http';
 
@@ -13,16 +13,20 @@ export class FrontendHttp {
   private _queueSendEvent: ReplaySubject<ISocketDocument> = new ReplaySubject();
   private _queueReceiveEvent: ReplaySubject<ISocketDocument> = new ReplaySubject();
 
-  private _container: PlayerContainer;
+  private _container: FrontendContainer;
 
-  constructor(private _gamePrimaryName: string, private _remoteBackendUrl: string, assetsRoot: string, feCallback: (n: IFrontendApi) => any) {
+  constructor(private _gamePrimaryName: string, private _remoteBackendUrl: string, assetsRoot: string) {
 
     // Create Http Connection.
     console.logD(`Connecting to http backend: ${_remoteBackendUrl}`);
 
-    this._container = new PlayerContainer(assetsRoot, feCallback);
+    this._container = new FrontendContainer(assetsRoot);
 
     this._init();
+  }
+
+  public getFrontendApi(): IFrontendApi {
+    return this._container.getFrontendApi();
   }
 
   private async _init() {

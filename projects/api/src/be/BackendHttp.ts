@@ -7,7 +7,7 @@ import { IBackendApi } from "../public";
 import { IHttpDocument } from "../documents/IHttpDocument";
 import { ISocketDocument } from "../documents/ISocketDocument";
 import { Topic } from "../documents/Topic";
-import { GameContainer } from "./GameContainer";
+import { BackendContainer } from "./BackendContainer";
 import { getFrakasJson } from "../documents/FrakasJson";
 import { createLocalHost } from "./LocalHost";
 
@@ -16,19 +16,23 @@ export class BackendHttp {
     private _connections: {
         [name: string]: { docs: ISocketDocument[], idleCounter: number }
     } = {};
-    private _container: GameContainer;
+    private _container: BackendContainer;
 
     /**
      * Create and instance of BackendHttp Server which  takes an optional Express Request object for scenarios
      * where the backend game container lives in an existing web server context. Alternatively, if Express Request
      * object is null, a new webserver instance will be created  
      */
-    constructor(beCallback: (n: IBackendApi) => any, private _noHost: boolean, private _remoteHost: boolean, request: Request | null = null, response: Response | null = null) {
+    constructor(private _noHost: boolean, private _remoteHost: boolean, request: Request | null = null, response: Response | null = null) {
 
-        this._container = new GameContainer(beCallback);
+        this._container = new BackendContainer();
         this._init(request, response)
 
         this.startCheckIdle();
+    }
+
+    public getBackendApi(): IBackendApi {
+        return this._container.getBackendApi();
     }
 
     private startCheckIdle() {

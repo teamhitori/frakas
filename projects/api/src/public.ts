@@ -7,16 +7,37 @@ import { FrakasJson } from './documents/FrakasJson';
 import { LogLevel } from './utils/LogLevel';
 import chalk from 'chalk';
 
-console.logE = (...args) => { if(global.loglevel >= LogLevel.error) console.log(chalk.red(...args)); };
-console.logW = (...args) => { if(global.loglevel >= LogLevel.warning) console.log(chalk.yellow(...args)); };
-console.logI = (...args) => { if(global.loglevel >= LogLevel.info) console.log(chalk.gray(...args)); };
-console.logD = (...args) => { if(global.loglevel >= LogLevel.debug) console.log(...args); };
-console.logDiag = (...args) => { if(global.loglevel >= LogLevel.diagnosic) console.log(chalk.blue(...args)); };
+console.logE = (...args) => { if (global.loglevel >= LogLevel.error) console.log(chalk.red(...args)); };
+console.logW = (...args) => { if (global.loglevel >= LogLevel.warning) console.log(chalk.yellow(...args)); };
+console.logI = (...args) => { if (global.loglevel >= LogLevel.info) console.log(chalk.gray(...args)); };
+console.logD = (...args) => { if (global.loglevel >= LogLevel.debug) console.log(...args); };
+console.logDiag = (...args) => { if (global.loglevel >= LogLevel.diagnosic) console.log(chalk.blue(...args)); };
 
-export interface PlayerEventContent<T> {
-    playerPosition: number;
-    playerState: T;
+export enum FrontendTopic {
+    privateEvent = 0,
+    publicEvent = 2,
 }
+
+export enum BackendTopic {
+    playerEvent = 1,
+    start = 3,
+    playerEnter = 5,
+    playerExit = 7,
+}
+
+// export interface EventState<T> {
+//     topic: FrontendEvent | BackendEvent
+//     eventState: T | undefined;
+// }
+
+// export interface FrontendEvent<T> {
+//     topic: FrontendTopic, state: T | undefined
+// }
+
+// export interface BackendEvent<T> { 
+//     topic: BackendTopic, 
+//     state: T | undefined 
+// }
 
 /**
  *  Front End API
@@ -34,22 +55,12 @@ export interface IFrontendApi {
      * is received by the server it will be associated with a "PlayerPosition".
      * @param state data to send to the backend
      */
-    sendToBackend<T>(state: T): void;
+    sendEvent<T>(state: T): void;
 
     /**
      * Observable that allows client to respond to a private (player specific) event from the server
      */
-    onPrivateEvent<T>(): Observable<T>;
-
-    /**
-     * Observable that allows client to respond to a public event from the server
-     */
-    onPublicEvent<T>(): Observable<T>;
-
-    /**
-     * Promise that allows client to respond to "Game Stop" event
-     */
-    onGameStop(): Promise<void>;
+    receiveEvent<T>(): Observable<{topic: FrontendTopic, state: T | undefined}>;
 
     /**
      * The location of the static assets folder, since this value can change based on deployment configuration, this value will always represent the correct location 
@@ -65,9 +76,9 @@ export interface IBackendApi {
 
     /**
      * Send event data so a specific connected player client
-     * @param playerEventContent Defines event data as well as player position of client that should receive data
+     * @param eventState Defines event data as well as player position of client that should receive data
      */
-    sendToPlayer<T>(playerEventContent: PlayerEventContent<T>): void;
+    sendToPlayer<T>(playerPosition: number, state: T): void;
 
     /**
      * Send event data so all connected player clients
@@ -79,27 +90,8 @@ export interface IBackendApi {
      * Observable that allows server to respond to a Player specific event from the client
      * The event is wrapped in playerEventContent<T> which defines event data as well as player position of client that sent the data
      */
-    onPlayerEvent<T>(): Observable<PlayerEventContent<T>>;
+    receiveEvent<T>(): Observable<{ playerPosition: number | undefined, topic: BackendTopic, state: T | undefined }>;
 
-    /**
-     * Observable that allows the server to respond to a "Player Enter". The event includes a number representing the new Player Position 
-     */
-    onPlayerEnter(): Observable<number>;
-
-    /**
-     * Observable that allows the server to respond to a "Player Exit". The event includes a number representing the exiting Player Position 
-     */
-    onPlayerExit(): Observable<number>;
-
-    /**
-     * Observable that allows the server to respond to a Game Stop Event 
-     */
-    onGameStop(): Observable<void>;
-
-    /**
-     * Observable that allows the server to respond to a Game Start Event 
-     */
-    onGameStart(): Observable<void>;
 }
 
 export interface IOptions {
@@ -117,23 +109,38 @@ export interface IOptions {
  * }, { loglevel: LogLevel.info });
  * ```
  */
-export function createFrontend(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
+export function createFrontend(options: IOptions | undefined = undefined): Promise<IFrontendApi | undefined> {
 
-    try {
-        if (typeof window === 'undefined') return;
+    global.loglevel = options?.loglevel ?? LogLevel.error;
 
-        global.loglevel = options?.loglevel ?? LogLevel.error;
+    return new Promise<IFrontendApi | undefined>(resolve => {
 
-        document.addEventListener("DOMContentLoaded", async (event) => {
+        try {
 
-            var { wsUrl, remoteHttpBase } = await _setupFrontend();
+            if (typeof window === 'undefined') {
+                resolve(undefined);
+            }
 
-            new FrontendSocket(`${wsUrl}`, remoteHttpBase, "assets", feCallback);
-        });
-    } catch (error) {
-        console.logE(error)
-        throw error;
-    }
+            console.log("createFrontend window");
+
+            document.addEventListener("DOMContentLoaded", async (event) => {
+
+                console.logD("DOMContentLoadedD");
+                console.log("DOMContentLoaded");
+
+                var { wsUrl, remoteHttpBase } = await _setupFrontend();
+
+                var frontend = new FrontendSocket(`${wsUrl}`, remoteHttpBase, "assets");
+
+                resolve(frontend.getFrontendApi());
+            });
+        } catch (error) {
+            console.logE(error);
+            resolve(undefined);
+        }
+    });
+
+
 }
 
 /**
@@ -147,25 +154,30 @@ export function createFrontend(feCallback: (n: IFrontendApi) => any, options: IO
  * }, { loglevel: LogLevel.info });
  * ```
  */
-export function createFrontendHttp(feCallback: (n: IFrontendApi) => any, options: IOptions | undefined = undefined) {
+export function createFrontendHttp(options: IOptions | undefined = undefined): Promise<IFrontendApi | undefined> {
 
-    try {
+    global.loglevel = options?.loglevel ?? LogLevel.error;
 
-        if (typeof window === 'undefined') return;
+    return new Promise<IFrontendApi | undefined>(resolve => {
+        try {
 
-        global.loglevel = options?.loglevel ?? LogLevel.error;
+            if (typeof window === 'undefined') resolve(undefined);
 
-        document.addEventListener("DOMContentLoaded", async (event) => {
+            document.addEventListener("DOMContentLoaded", async (event) => {
 
-            var { remoteHttpBase, gamePrimaryName } = await _setupFrontend();
+                var { remoteHttpBase, gamePrimaryName } = await _setupFrontend();
 
-            new FrontendHttp(gamePrimaryName, remoteHttpBase, "assets", feCallback);
-        });
+                var frontend = new FrontendHttp(gamePrimaryName, remoteHttpBase, "assets");
 
-    } catch (error) {
-        console.logE(error)
-        throw error;
-    }
+                resolve(frontend.getFrontendApi());
+            });
+
+        } catch (error) {
+            console.logE(error)
+            resolve(undefined)
+        }
+
+    });
 }
 
 /**
@@ -179,14 +191,14 @@ export function createFrontendHttp(feCallback: (n: IFrontendApi) => any, options
  * }, { loglevel: LogLevel.info });
  * ```
  */
-export function createBackend(beCallback: (n: IBackendApi) => any, options: IOptions | undefined = undefined) {
+export async function createBackend(options: IOptions | undefined = undefined): Promise<IBackendApi | undefined> {
 
-    try {
-        if (typeof process === 'object' && typeof window === 'undefined') {
+    global.loglevel = options?.loglevel ?? LogLevel.error;
 
-            global.loglevel = options?.loglevel ?? LogLevel.error;
+    return new Promise<IBackendApi | undefined>(resolve => {
 
-            var runAsync = async () => {
+        try {
+            if (typeof process === 'object' && typeof window === 'undefined') {
 
                 console.logI("createBackend called.");
 
@@ -207,15 +219,20 @@ export function createBackend(beCallback: (n: IBackendApi) => any, options: IOpt
 
                 const options = program.opts();
 
-                new BackendSocket(beCallback, options.noLocalhost, options.remoteHost);
-            }
-            runAsync()
-        }
+                var backendSocket = new BackendSocket(options.noLocalhost, options.remoteHost);
 
-    } catch (error) {
-        console.logE(error)
-        throw error;
-    }
+                var api = backendSocket.getBackendApi();
+
+                resolve(api);
+            } else {
+                resolve(undefined);
+            }
+
+        } catch (error) {
+            console.logE(error)
+            resolve(undefined);
+        }
+    });
 }
 
 /**
@@ -229,14 +246,14 @@ export function createBackend(beCallback: (n: IBackendApi) => any, options: IOpt
  * }, { loglevel: LogLevel.info });
  * ```
  */
-export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: any | null = null, response: any | null = null, options: IOptions | undefined = undefined) {
+export function createBackendHttp(request: any | null = null, response: any | null = null, options: IOptions | undefined = undefined): Promise<IBackendApi | undefined> {
 
-    try {
-        if (typeof process === 'object' && typeof window === 'undefined') {
+    global.loglevel = options?.loglevel ?? LogLevel.error;
 
-            global.loglevel = options?.loglevel ?? LogLevel.error;
+    return new Promise<IBackendApi | undefined>(resolve => {
 
-            var runAsync = async () => {
+        try {
+            if (typeof process === 'object' && typeof window === 'undefined') {
 
                 console.logI("createBackendHttp called");
 
@@ -257,14 +274,19 @@ export function createBackendHttp(beCallback: (n: IBackendApi) => any, request: 
 
                 const options = program.opts();
 
-                new BackendHttp(beCallback, options.noLocalHost, options.remoteHost, request, response);
+                var backendHttp = new BackendHttp(options.noLocalHost, options.remoteHost, request, response);
+
+                var api = backendHttp.getBackendApi();
+
+                resolve(api);
+            } else {
+                resolve(undefined);
             }
-            runAsync()
+        } catch (error) {
+            console.logE(error)
+            resolve(undefined);
         }
-    } catch (error) {
-        console.logE(error)
-        throw error;
-    }
+    });
 }
 
 async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string, gamePrimaryName: string }> {

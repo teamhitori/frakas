@@ -21,16 +21,11 @@ export async function init(args: args) {
                 return;
             }
             exec(command, { cwd: cwd }, async (error, stdout, stderr) => {
-                if (error) {
-                    if (args.verbose) console.log(chalk.yellow(`${error.message}`));
-                    //return;
-                }
-                if (stderr) {
-                    if (args.verbose) console.log(chalk.yellow(`${stderr}`));
-                    //return;
-                }
+                if (error || stderr) {
 
-                if (args.verbose) console.log(chalk.gray(`${stdout}`));
+                    console.log(chalk.yellow(`${stderr}`));
+
+                } else if (args.verbose) console.log(chalk.gray(`${stdout}`));
 
                 resolve({});
             });
@@ -53,16 +48,17 @@ export async function init(args: args) {
 
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
-    await run("tsc --init", "Initializing Typescript..");
-    await run("npm i @frakas/api", "Installing @frakas/api ..");
+    await run("npm i @frakas/api@0.1.7", "Installing @frakas/api@0.1.7 ..");
     await run("npm i babylonjs babylonjs-gui babylonjs-loaders", "Installing Bobaylonjs ..");
     await run("npm i webpack webpack-cli", "Installing Webpack ..");
+    await run("npm i rxjs", "installing reactive extensions..");
     await run("npm i bufferutil cors file-loader copy-webpack-plugin html-webpack-plugin mini-css-extract-plugin node-gyp-build path-browserify source-map-loader ts-loader utf-8-validate", "Installing other Webpack Dependencies..");
+    await run("tsc --init --moduleResolution node --module esnext --target es2017", "Initializing Typescript..");
 
     if (args.dryRun || args.verbose) {
         console.log(chalk.gray("Writefile 'frakas.json'"), config);
         console.log(chalk.gray("mkdir src"));
-        console.log(chalk.gray("Writefile 'src/index.ts'"), code);
+        console.log(chalk.gray("Writefile 'src/index.ts'"), indexts);
         console.log(chalk.gray("Writefile '.frignore'"), ignore);
         console.log(chalk.gray("Writefile 'webpack.config.js'"), webpackConfig);
     }
@@ -70,7 +66,10 @@ export async function init(args: args) {
     if (!args.dryRun) {
         await fs.promises.writeFile('frakas.json', JSON.stringify(config, null, 2));
         await fs.promises.mkdir('src', { recursive: true });
-        await fs.promises.writeFile('src/index.ts', code);
+        await fs.promises.writeFile('src/index.ts', indexts);
+        await fs.promises.writeFile('src/frontend.ts', frontendts);
+        await fs.promises.writeFile('src/backend.ts', backendts);
+        await fs.promises.writeFile('src/shared.ts', sharedts);
         await fs.promises.writeFile('.frignore', ignore);
         await fs.promises.writeFile('webpack.config.js', webpackConfig);
     }
@@ -112,174 +111,186 @@ obj
 build
 web
 client
-server`;
+server
+.git`;
 
-const code = `
-import { Engine, Scene, Vector3, HemisphericLight, ShadowGenerator, PointLight, MeshBuilder, StandardMaterial, ArcRotateCamera, Matrix, Color3 } from "babylonjs";
-import { createFrontend, createBackend } from '@frakas/api/public';
+const indexts = `if (typeof process === 'object' && typeof window === 'undefined') {
+    const { backend } = require('./backend');
+    backend;
+}
 
-// Think twice before creating global variables, frontend state cannot see backend, and vice versa.
+if (typeof window !== 'undefined'){
+    const { frontend } = require('./frontend');
+    frontend;
+}`
+
+var frontendts = `import { Engine, Scene, Vector3, HemisphericLight, ShadowGenerator, PointLight, MeshBuilder, StandardMaterial, ArcRotateCamera, Matrix, Color3 } from "babylonjs";
+import { createFrontend, FrontendTopic } from '@frakas/api/public';
+import { PlayerEvent } from "./shared";
+import { LogLevel } from "@frakas/api/utils/LogLevel";
+import { filter, tap } from "rxjs";
+
+import 'babylonjs-loaders';
 
 // Create frontend and receive api for calling backend
-createFrontend(api => {
+var api = (await createFrontend({ loglevel: LogLevel.info }))!!;
 
-    // My random player color
-    var myColorRaw = Math.floor(Math.floor(Math.random() * 1000)); // 1s = R, 10s = G, 100s = B
+// My random player color
+var myColorRaw = Math.floor(Math.floor(Math.random() * 1000));
 
-    // map raw number into Bablylon Color3 vector
-    var myColor = new Color3((myColorRaw % 10) / 10, ((myColorRaw / 10) % 10) / 10, ((myColorRaw / 100) % 10) / 10);
+// map raw number into Bablylon Color3 vector
+var myColor = new Color3((myColorRaw % 10) / 10, ((myColorRaw / 10) % 10) / 10, ((myColorRaw / 100) % 10) / 10);
 
-    // Default Grey Color
-    var sphereDefaultColor = new Color3(0.7, 0.7, 0.7);
+// Default Grey Color
+var sphereDefaultColor = new Color3(0.7, 0.7, 0.7);
 
-    // HTML Canvas used by Babylonjs to project game scene
-    var canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
+// HTML Canvas used by Babylonjs to project game scene
+var canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 
-    // Load the 3D engine
-    var engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
+// Load the 3D engine
+var engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true });
 
-    // This creates a basic Babylon Scene object (non-mesh)
-    var scene = new Scene(engine);
+// This creates a basic Babylon Scene object (non-mesh)
+var scene = new Scene(engine);
 
-    // This creates an arcRotate camera
-    var camera = new ArcRotateCamera("camera", BABYLON.Tools.ToRadians(128), BABYLON.Tools.ToRadians(40), 10, Vector3.Zero(), scene);
+// This creates an arcRotate camera
+var camera = new ArcRotateCamera("camera", BABYLON.Tools.ToRadians(128), BABYLON.Tools.ToRadians(40), 10, Vector3.Zero(), scene);
 
-    // This targets the camera to scene origin
-    camera.setTarget(Vector3.Zero());
+// This targets the camera to scene origin
+camera.setTarget(Vector3.Zero());
 
-    // This attaches the camera to the canvas
-    camera.attachControl(canvas, true);
+// This attaches the camera to the canvas
+camera.attachControl(canvas, true);
 
-    // This creates a light, aiming 0,1,0 - to the sky (non-mesh)
-    var lightH = new HemisphericLight("light1", new Vector3(0, 1, 0), scene);
+// This creates a light, aiming 0,1,0 - to the sky (non-mesh)
+var lightH = new HemisphericLight("light1", new Vector3(0, 1, 0), scene);
 
-    // Default intensity is 1. Let's dim the light a small amount
-    lightH.intensity = 0.7;
+// Default intensity is 1. Let's dim the light a small amount
+lightH.intensity = 0.7;
 
-    var light = new PointLight("point-light", new Vector3(3, 3, -3), scene);
-    light.position = new Vector3(3, 10, 3);
-    light.intensity = 0.5;
+var light = new PointLight("point-light", new Vector3(3, 3, -3), scene);
+light.position = new Vector3(3, 10, 3);
+light.intensity = 0.5;
 
-    // Babylonjs built-in 'sphere' shape. Params: name, options, scene
-    var sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
-    var sphereMaterial = new StandardMaterial("sphereMaterial", scene);
-    sphereMaterial.diffuseColor = sphereDefaultColor;
-    sphere.material = sphereMaterial;
+// Babylonjs built-in 'sphere' shape. Params: name, options, scene
+var sphere = MeshBuilder.CreateSphere("sphere", { diameter: 2, segments: 32 }, scene);
+var sphereMaterial = new StandardMaterial("sphereMaterial", scene);
+sphereMaterial.diffuseColor = sphereDefaultColor;
+sphere.material = sphereMaterial;
 
-    // Move the sphere upward 1/2 its height
-    sphere.position.y = 1;
+// Move the sphere upward 1/2 its height
+sphere.position.y = 1;
 
-    // Babylonjs built-in 'ground' shape. Params: name, options, scene
-    var ground = MeshBuilder.CreateGround("ground", { width: 6, height: 6 }, scene);
-    var groundMaterial = new StandardMaterial("groundMaterial", scene);
-    groundMaterial.diffuseColor = myColor;
-    ground.material = groundMaterial;
-    ground.receiveShadows = true;
+// Babylonjs built-in 'ground' shape. Params: name, options, scene
+var ground = MeshBuilder.CreateGround("ground", { width: 6, height: 6 }, scene);
+var groundMaterial = new StandardMaterial("groundMaterial", scene);
+groundMaterial.diffuseColor = myColor;
+ground.material = groundMaterial;
+ground.receiveShadows = true;
 
-    // Create Shadows
-    var shadowGenerator = new ShadowGenerator(1024, light);
-    shadowGenerator.addShadowCaster(sphere);
-    shadowGenerator.useExponentialShadowMap = true;
+// Create Shadows
+var shadowGenerator = new ShadowGenerator(1024, light);
+shadowGenerator.addShadowCaster(sphere);
+shadowGenerator.useExponentialShadowMap = true;
 
-    // Babylonjs on pointerdown event
-    scene.onPointerDown = function castRay() {
-        var ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), camera);
+// Babylonjs on pointerdown event
+scene.onPointerDown = function castRay() {
+    var ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), camera);
 
-        var hit = scene.pickWithRay(ray);
+    var hit = scene.pickWithRay(ray);
 
-        if (hit?.pickedMesh && hit.pickedMesh.name == "sphere") {
+    if (hit?.pickedMesh && hit.pickedMesh.name == "sphere") {
 
-            // send enable player color event to backend
-            api.sendToBackend(<PlayerEvent>{
-                enable: true,
-                color: myColor
-            });
-        }
-    }
-
-    // Babylonjs on pointerup event
-    scene.onPointerUp = function castRay() {
-
-        // send disable player color event to backend
-        api.sendToBackend(<PlayerEvent>{
-            enable: false,
+        // send enable player color event to backend
+        api?.sendEvent(<PlayerEvent>{
+            enable: true,
             color: myColor
         });
     }
+}
 
-    // Babylonjs render loop
-    engine.runRenderLoop(() => {
-        scene?.render();
+// Babylonjs on pointerup event
+scene.onPointerUp = function castRay() {
+
+    // send disable player color event to backend
+    api?.sendEvent(<PlayerEvent>{
+        enable: false
     });
+}
 
-    // the canvas/window resize event handler
-    window.addEventListener('resize', () => {
-        engine.resize();
-    });
-
-    // Send Player enter event to backend, ust be called before sending other events to backend
-    api.playerEnter();
-
-    // receive public events from backend
-    api.onPublicEvent<PlayerEvent>()
-        .subscribe((event) => {
-
-            // set sphere color
-            sphereMaterial.diffuseColor = event.color;
-        });
+// Babylonjs render loop
+engine.runRenderLoop(() => {
+    scene?.render();
 });
 
+// the canvas/window resize event handler
+window.addEventListener('resize', () => {
+    engine.resize();
+});
+
+// Send Player enter event to backend, ust be called before sending other events to backend
+api?.playerEnter();
+
+// receive public events from backend
+api?.receiveEvent<PlayerEvent>()
+    .pipe(
+        filter(e => e.topic == FrontendTopic.publicEvent),
+        tap(event => {
+            console.log(event)
+            if (event.state?.enable) {
+                // set sphere color
+                sphereMaterial.diffuseColor = event.state!!.color;
+            } else {
+                sphereMaterial.diffuseColor = sphereDefaultColor;
+            }
+        })
+    )
+    .subscribe();`;
+
+var backendts = `import { Color3 } from "babylonjs";
+import { BackendTopic, createBackend } from '@frakas/api/public';
+import { PlayerEvent } from "./shared";
+import { LogLevel } from "@frakas/api/utils/LogLevel";
+import { filter, tap } from "rxjs";
 
 // Create backend and receive api for calling frontend
-createBackend(api => {
+var api = await createBackend({ loglevel: LogLevel.info });
 
-    // default sphere color
-    var sphereDefaultColor = new Color3(0.7, 0.7, 0.7);
+// keep track of entered players
+var playerColors: { [playerPosition: number]: Color3 | undefined } = {};
 
-    // keep track of entered players in array
-    var playerColors: PlayerColor[] = []
-
-    api.onPlayerEvent<PlayerEvent>()
-        .subscribe((event) => {
-
-            if(event.playerState.enable) {
-
-                // Add player color to list, if not already added
-                if(!playerColors.some(p => p.playerPosition == event.playerPosition)) {
-                    playerColors.push({playerPosition: event.playerPosition, color: event.playerState.color});
-                } 
-            } else {
-
-                // else remove player color, if exists in list
-                playerColors = playerColors.filter(p => p.playerPosition != event.playerPosition);
-            }
+api?.receiveEvent<PlayerEvent>()
+    .pipe(
+        filter(e => e.topic == BackendTopic.playerEvent),
+        tap(event => {
+            // set player color (if defined)
+            playerColors[event.playerPosition!!] = event?.state?.color;
 
             // send most recent color to all players if exists, or else send default color
-            if(playerColors.length) {
-                var playerColor = playerColors[playerColors.length-1];
-
-                api.sendToAll(<PlayerEvent>{
+            if (event?.state?.color) {
+                api?.sendToAll(<PlayerEvent>{
                     enable: true,
-                    color: playerColor.color
+                    color: event?.state?.color
                 });
             } else {
-                api.sendToAll(<PlayerEvent>{
-                    enable: true,
-                    color: sphereDefaultColor
+                api?.sendToAll(<PlayerEvent>{
+                    enable: false
                 });
             }
-        });
-});
+        })
+    ).subscribe();`;
 
-interface PlayerColor {
+var sharedts = `import { Color3 } from "babylonjs"
+
+export interface PlayerColor {
     playerPosition: number,
     color: Color3
 }
 
-interface PlayerEvent {
+export interface PlayerEvent {
     enable: boolean,
     color: Color3
-}`
+}`;
 
 var webpackConfig = `const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
@@ -378,14 +389,7 @@ var clientConfig = {
                     <meta property="og:title" content="\${config.gameName}" />
                     <meta property="og:site_name" content="\${config.gameName}">
                     <meta property="og:description" content="\${config.gameName}" />
-                    <link href="assets/bootstrap.min.css" rel="stylesheet">
                     <style>
-
-                    @font-face {
-                        font-family: gooddog;
-                        src: url(assets/gooddog.otf);
-                        font-weight: bold;
-                    }
 
                     #renderCanvas {
                         position: relative;
@@ -411,7 +415,6 @@ var clientConfig = {
                         margin:0;
                         overflow:hidden;
                         overscroll-behavior-y: contain;
-                        font-family: gooddog;
                       }
                     </style>
                 </head>
@@ -419,14 +422,6 @@ var clientConfig = {
                   <div class="cavas-holder-inner" id="renderCanvas-holder">
                     <canvas tabindex="0" autofocus width="2000" id="renderCanvas"></canvas>
                   </div>
-                  
-                <script async src="https://www.googletagmanager.com/gtag/js?id=G-GFTBDJDLK0"></script>
-                <script>
-                    window.dataLayer = window.dataLayer || [];
-                    function gtag(){dataLayer.push(arguments);}
-                    gtag('js', new Date());
-                    gtag('config', 'G-GFTBDJDLK0');
-                </script>
 
                 </body>
                 </html>\`
@@ -449,7 +444,10 @@ var clientConfig = {
     })],
     watch: true,
     watchOptions: {
-        ignored: [config.clientDir, config.serverDir],
+        ignored: new RegExp('.*^((?!(/src/)).)*$')
+    },
+    experiments: {
+        topLevelAwait: true
     }
 };
 
@@ -510,7 +508,10 @@ var serverConfig = {
     })],
     watch: true,
     watchOptions: {
-        ignored: [config.clientDir, config.serverDir],
+        ignored: new RegExp('.*^((?!(/src/)).)*$')
+    },
+    experiments: {
+        topLevelAwait: true
     }
 };
 

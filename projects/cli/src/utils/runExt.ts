@@ -12,7 +12,6 @@ export function spawnBackend(appconfig: FrakasJson, root: string, args: args, op
 
     var cwd = process.cwd();
     var serveDir = path.join(cwd, appconfig.serverDir);
-    //var verboseTag = args.verbose ? "-v" : "";
     var indexjs = path.resolve(serveDir, `server.js`);
 
     console.log(chalk.green(`spawning backend ${indexjs}`));
