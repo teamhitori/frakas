@@ -48,7 +48,7 @@ export async function init(args: args) {
 
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
-    await run("npm i @frakas/api@0.1.9", "Installing @frakas/api@0.1.9 ..");
+    await run("npm i @frakas/api@0.1.10", "Installing @frakas/api@0.1.10 ..");
     await run("npm i babylonjs babylonjs-gui babylonjs-loaders", "Installing Bobaylonjs ..");
     await run("npm i webpack webpack-cli", "Installing Webpack ..");
     await run("npm i rxjs", "installing reactive extensions..");
