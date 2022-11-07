@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { Observable, Subject, tap } from 'rxjs';
 import { FrontendHttp } from './fe/FrontendHttp';
 import { FrontendSocket } from './fe/FrontendSocket';
 import * as commander from 'commander';
@@ -6,11 +6,15 @@ import { get } from './utils/http';
 import { FrakasJson } from './documents/FrakasJson';
 import { LogLevel } from './utils/LogLevel';
 import chalk from 'chalk';
+import { BackendSocket } from './be/BackendSocket';
+import { BackendHttp } from './be/BackendHttp';
+import { Disposable } from 'rx';
+import { v4 as uuid } from 'uuid'
 
 console.logE = (...args) => { if (global.loglevel >= LogLevel.error) console.log(chalk.red(...args)); };
 console.logW = (...args) => { if (global.loglevel >= LogLevel.warning) console.log(chalk.yellow(...args)); };
 console.logI = (...args) => { if (global.loglevel >= LogLevel.info) console.log(chalk.gray(...args)); };
-console.logD = (...args) => { if (global.loglevel >= LogLevel.debug) console.log(...args); };
+console.logDebug = (...args) => { if (global.loglevel >= LogLevel.debug) console.log(...args); };
 console.logDiag = (...args) => { if (global.loglevel >= LogLevel.diagnosic) console.log(chalk.blue(...args)); };
 
 export enum FrontendTopic {
@@ -24,20 +28,6 @@ export enum BackendTopic {
     playerEnter = 5,
     playerExit = 7,
 }
-
-// export interface EventState<T> {
-//     topic: FrontendEvent | BackendEvent
-//     eventState: T | undefined;
-// }
-
-// export interface FrontendEvent<T> {
-//     topic: FrontendTopic, state: T | undefined
-// }
-
-// export interface BackendEvent<T> { 
-//     topic: BackendTopic, 
-//     state: T | undefined 
-// }
 
 /**
  *  Front End API
@@ -60,12 +50,17 @@ export interface IFrontendApi {
     /**
      * Observable that allows client to respond to a private (player specific) event from the server
      */
-    receiveEvent<T>(): Observable<{topic: FrontendTopic, state: T | undefined}>;
+    receiveEvent<T>(): Observable<{ topic: FrontendTopic, state: T | undefined }>;
 
     /**
      * The location of the static assets folder, since this value can change based on deployment configuration, this value will always represent the correct location 
      */
     assetsRoot: string;
+
+    /*
+    Dispose instance and complete observables
+    */
+    dispose(): void;
 }
 
 /**
@@ -92,85 +87,265 @@ export interface IBackendApi {
      */
     receiveEvent<T>(): Observable<{ playerPosition: number | undefined, topic: BackendTopic, state: T | undefined }>;
 
+    /*
+    Dispose instance and complete observables
+    */
+    dispose(): void;
 }
 
 export interface IOptions {
     loglevel: LogLevel
 }
 
+
+var frontendSocket: FrontendSocket | undefined;
 /**
  * Create Frontend.
- * Establishes frontend runtine allong with websocket connection to backend server
+ * Establishes frontend runtine along with websocket connection to backend server
  *
  * ```ts
- * createFrontend(async api => {
- *   -- api: IFrontendApi
- *
- * }, { loglevel: LogLevel.info });
+ * var api = createFrontend({ loglevel: LogLevel.info });
  * ```
  */
 export function createFrontend(options: IOptions | undefined = undefined): Promise<IFrontendApi | undefined> {
 
     global.loglevel = options?.loglevel ?? LogLevel.error;
 
-    return new Promise<IFrontendApi | undefined>(resolve => {
+    return new Promise<IFrontendApi | undefined>(async resolve => {
 
         try {
-
             if (typeof window === 'undefined') {
                 resolve(undefined);
+            } else {
+                console.logDebug("createFrontend window");
+
+                if(frontendSocket == undefined) {
+                    var { wsUrl, remoteHttpBase } = await _setupFrontend();
+                    frontendSocket = new FrontendSocket(`${wsUrl}`, remoteHttpBase, "assets");
+                }
+
+                resolve(frontendSocket.getFrontendApi());
             }
+        } catch (error) {
+            console.logE(error);
+            resolve(undefined);
+        }
+    });
+}
 
-            console.log("createFrontend window");
 
-            document.addEventListener("DOMContentLoaded", async (event) => {
+const localPlayersEventSubject: {
+    [playerPosition: number]: Subject<{
+        topic: FrontendTopic;
+        state: any | undefined;
+    }>
+} = {}
 
-                console.logD("DOMContentLoadedD");
-                console.log("DOMContentLoaded");
+/**
+ * Create Frontend.
+ * Creates frontend runtine that can connect to a locally running backend runtime
+ *
+ * ```ts
+ * var api = createFrontendLocal(0, LogLevel.info);
+ * ```
+ */
+export async function createFrontendLocal(playerPosition: number, options: IOptions | undefined = undefined): Promise<IFrontendApi | undefined> {
 
-                var { wsUrl, remoteHttpBase } = await _setupFrontend();
+    global.loglevel = options?.loglevel ?? LogLevel.error;
 
-                var frontend = new FrontendSocket(`${wsUrl}`, remoteHttpBase, "assets");
+    return new Promise<IFrontendApi | undefined>(async resolve => {
 
-                resolve(frontend.getFrontendApi());
-            });
+        try {
+            if (typeof window === 'undefined') {
+                resolve(undefined);
+            } else {
+                console.logDebug("createFrontendLocal window");
+
+                if (localPlayersEventSubject[playerPosition] == undefined) {
+
+                    var playerEntered = false;
+
+                    const playerEventSubject = new Subject<{
+                        topic: FrontendTopic;
+                        state: any | undefined;
+                    }>();
+
+                    localPlayersEventSubject[playerPosition] = playerEventSubject;                    
+                }
+
+                var frontendApi = <IFrontendApi>{
+                    playerEnter: () => {
+
+                        if (!playerEntered) {
+                            playerEntered = true;
+
+                            for (const instanceId in localBackendEventSubject) {
+                                var instance = localBackendEventSubject[instanceId];
+
+                                instance.next({ playerPosition: playerPosition, topic: BackendTopic.playerEnter, state: undefined });
+                            }
+                            
+                            console.logDebug(`playerEnter [playerPosition: ${playerPosition}]`);
+                        }
+                    },
+                    sendEvent: (state: any) => {
+
+                        if (!playerEntered) {
+                            console.logW("Event not sent, please call frontentApi.playerEnter() to init backend connection")
+                            return;
+
+                        }
+
+                        if (global.loglevel >= LogLevel.diagnosic) {
+                            console.logDiag(`sendToBackend [playerPosition: ${playerPosition}]`, JSON.stringify(state));
+                        }
+
+                        for (const instanceId in localBackendEventSubject) {
+                            var instance = localBackendEventSubject[instanceId];
+                            instance.next({ playerPosition: playerPosition, topic: BackendTopic.playerEvent, state: state });
+                        }
+                        
+                    },
+
+                    receiveEvent: () => {
+                        return localPlayersEventSubject[playerPosition]
+                            ?.asObservable()
+                            .pipe(
+                                tap(e => {
+                                    console.logDiag("feApi receiveEvent", playerPosition, e)
+                                })
+                            );
+                    },
+                    assetsRoot: "assets",
+                    dispose: () => {
+
+                        console.logDebug(`dispose [playerPosition: ${playerPosition}]`)
+
+                        localPlayersEventSubject[playerPosition]?.complete();
+                        delete localPlayersEventSubject[playerPosition];
+                    }
+                }
+
+                resolve(frontendApi);
+            }
         } catch (error) {
             console.logE(error);
             resolve(undefined);
         }
     });
 
+}
 
+
+const localBackendEventSubject: {
+    [instanceId: string]: Subject<{
+        playerPosition: number | undefined,
+        topic: BackendTopic,
+        state: any | undefined
+    }>
+} = {}
+
+/**
+ * Create Local Backend.
+ * Creates backend that runs in the browser alongside front end
+ *
+ * ```ts
+ * var api = createBackendLocal({ loglevel: LogLevel.info });
+ * ```
+ */
+
+
+export async function createBackendLocal(options: IOptions | undefined = undefined): Promise<IBackendApi | undefined> {
+
+    global.loglevel = options?.loglevel ?? LogLevel.error;
+
+    return new Promise<IBackendApi | undefined>(resolve => {
+
+        try {
+            if (typeof window === 'undefined') {
+                console.logDebug("cannot ceate local IBackendApi in node process");
+                resolve(undefined);
+            } else {
+                console.logDebug("createBackendLocal window");
+
+                let instanceId = uuid();
+
+                localBackendEventSubject[instanceId] = new Subject();
+
+                var localBackend = <IBackendApi>{
+                    sendToPlayer: (playerPosition: number, state: any) => {
+                
+                        if (global.loglevel >= LogLevel.diagnosic) {
+                            console.logDiag(`sendToPlayer [playerPosition: ${playerPosition}]`, JSON.stringify(state));
+                        }
+                
+                        localPlayersEventSubject[playerPosition]?.next({ topic: FrontendTopic.privateEvent, state: state });
+                    },
+                    sendToAll: (state: any) => {
+                
+                        if (global.loglevel >= LogLevel.diagnosic) {
+                            console.logDiag("sendToAll", JSON.stringify(state));
+                        }
+                
+                        for (const playerPosition in localPlayersEventSubject) {
+                
+                            localPlayersEventSubject[playerPosition]?.next({ topic: FrontendTopic.publicEvent, state: state });
+                        }
+                    },
+                    receiveEvent: () => {
+                        return localBackendEventSubject[instanceId]
+                            .asObservable()
+                            .pipe(
+                                tap(e => {
+                                    console.logDiag("beApi receiveEvent", e)
+                                })
+                            );
+                    },
+                    dispose: () => {
+                        console.logDebug(`dispose [instanceId: ${instanceId}]`);
+                        localBackendEventSubject[instanceId]?.complete();
+                        delete localBackendEventSubject[instanceId];
+                    }
+                };
+
+                resolve(localBackend);
+            }
+
+        } catch (error) {
+            console.logE(error)
+            resolve(undefined);
+        }
+    });
 }
 
 /**
  * Create Frontend.
- * Establishes frontend runtine allong with a http connection to backend server
+ * Establishes frontend runtine along with a http connection to backend server
  *
  * ```ts
- * createFrontendHttp(async api => {
- *   -- api: IFrontendApi
- *
- * }, { loglevel: LogLevel.info });
+ * var api = createFrontendHttp({ loglevel: LogLevel.info });
  * ```
  */
+var frontendHttp: FrontendHttp | undefined
 export function createFrontendHttp(options: IOptions | undefined = undefined): Promise<IFrontendApi | undefined> {
 
     global.loglevel = options?.loglevel ?? LogLevel.error;
 
-    return new Promise<IFrontendApi | undefined>(resolve => {
+    return new Promise<IFrontendApi | undefined>(async resolve => {
         try {
 
-            if (typeof window === 'undefined') resolve(undefined);
+            if (typeof window === 'undefined') {
+                resolve(undefined);
+            } else {
 
-            document.addEventListener("DOMContentLoaded", async (event) => {
+                if (frontendHttp == undefined) {
+                    var { remoteHttpBase, gamePrimaryName } = await _setupFrontend();
 
-                var { remoteHttpBase, gamePrimaryName } = await _setupFrontend();
+                    frontendHttp = new FrontendHttp(gamePrimaryName, remoteHttpBase, "assets");
+                }
 
-                var frontend = new FrontendHttp(gamePrimaryName, remoteHttpBase, "assets");
-
-                resolve(frontend.getFrontendApi());
-            });
+                resolve(frontendHttp.getFrontendApi());
+            }
 
         } catch (error) {
             console.logE(error)
@@ -180,15 +355,14 @@ export function createFrontendHttp(options: IOptions | undefined = undefined): P
     });
 }
 
+
+var backendSocket: BackendSocket | undefined;
 /**
  * Create Backend.
- * Establishes backend server runtine allong with websocket connection to frontend clients
+ * Establishes backend server runtine along with websocket connection to frontend clients
  *
  * ```ts
- * createBackend(async api => {
- *   -- api: IBackendApi
- *
- * }, { loglevel: LogLevel.info });
+ * var api = createBackend({ loglevel: LogLevel.info });
  * ```
  */
 export async function createBackend(options: IOptions | undefined = undefined): Promise<IBackendApi | undefined> {
@@ -200,30 +374,30 @@ export async function createBackend(options: IOptions | undefined = undefined): 
         try {
             if (typeof process === 'object' && typeof window === 'undefined') {
 
-                console.logI("createBackend called.");
+                console.logDebug("createBackend called.");
 
-                const { BackendSocket } = require('./be/BackendSocket');
+                if (backendSocket == undefined) {
+                    const { BackendSocket } = require('./be/BackendSocket');
 
-                const program = new commander.Command();
+                    const program = new commander.Command();
 
-                program
-                    .name('frakas backend')
-                    .description('backend server')
-                    .version('0.0.0');
+                    program
+                        .name('frakas backend')
+                        .description('backend server')
+                        .version('0.0.0');
 
-                program
-                    .option('-n, --no-localhost')
-                    .option('-r, --remote-host');
+                    program
+                        .option('-n, --no-localhost')
+                        .option('-r, --remote-host');
 
-                program.parse(process.argv);
+                    program.parse(process.argv);
 
-                const options = program.opts();
+                    const options = program.opts();
 
-                var backendSocket = new BackendSocket(options.noLocalhost, options.remoteHost);
+                    backendSocket = new BackendSocket(options.noLocalhost, options.remoteHost);
+                }
 
-                var api = backendSocket.getBackendApi();
-
-                resolve(api);
+                resolve(backendSocket?.getBackendApi());
             } else {
                 resolve(undefined);
             }
@@ -235,17 +409,17 @@ export async function createBackend(options: IOptions | undefined = undefined): 
     });
 }
 
+
+
 /**
  * Create Backend.
- * Establishes backend server runtine allong with a http connection to frontend clients
+ * Establishes backend server runtine along with a http connection to frontend clients
  *
  * ```ts
- * createBackendHttp(async api => {
- *   -- api: IBackendApi
- *
- * }, { loglevel: LogLevel.info });
+ * var api = createBackendHttp({ loglevel: LogLevel.info });
  * ```
  */
+var backendHttp: BackendHttp | undefined;
 export function createBackendHttp(request: any | null = null, response: any | null = null, options: IOptions | undefined = undefined): Promise<IBackendApi | undefined> {
 
     global.loglevel = options?.loglevel ?? LogLevel.error;
@@ -255,30 +429,30 @@ export function createBackendHttp(request: any | null = null, response: any | nu
         try {
             if (typeof process === 'object' && typeof window === 'undefined') {
 
-                console.logI("createBackendHttp called");
+                console.logDebug("createBackendHttp called");
 
-                const { BackendHttp } = require('./be/BackendHttp');
+                if (backendHttp == undefined) {
+                    const { BackendHttp } = require('./be/BackendHttp');
 
-                const program = new commander.Command();
+                    const program = new commander.Command();
 
-                program
-                    .name('frakas backend')
-                    .description('backend server')
-                    .version('0.0.0');
+                    program
+                        .name('frakas backend')
+                        .description('backend server')
+                        .version('0.0.0');
 
-                program
-                    .option('-n, --no-localhost')
-                    .option('-r, --remote-host');
+                    program
+                        .option('-n, --no-localhost')
+                        .option('-r, --remote-host');
 
-                program.parse(process.argv);
+                    program.parse(process.argv);
 
-                const options = program.opts();
+                    const options = program.opts();
 
-                var backendHttp = new BackendHttp(options.noLocalHost, options.remoteHost, request, response);
+                    backendHttp = new BackendHttp(options.noLocalHost, options.remoteHost, request, response);
+                }
 
-                var api = backendHttp.getBackendApi();
-
-                resolve(api);
+                resolve(backendHttp?.getBackendApi());
             } else {
                 resolve(undefined);
             }
@@ -291,18 +465,18 @@ export function createBackendHttp(request: any | null = null, response: any | nu
 
 async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string, gamePrimaryName: string }> {
 
-    console.logI("setFrontend called");
+    console.logDebug("setFrontend called");
 
     var config = await get("frakas.json") as FrakasJson;
 
-    console.logD("GET frakas.json", config);
+    console.logDebug("GET frakas.json", config);
 
     var isLocalHost = getParameterByName("remote-host") == "false";
     var gamePrimaryName = getParameterByName("game-primary-name") ?? ""
 
     var hostName = isLocalHost || !config.remoteHost ? window.location.host : config.remoteHost;
 
-    var wsUrl = location.protocol === 'https:' ? `wss://${hostName}/ws` : `ws://${hostName}:${config.webPort}/ws`
+    var wsUrl = location.protocol === 'https:' ? `wss://${hostName}/ws` : `ws://${hostName}/ws`
 
     var fill = config.fillScreen;
     var ratio = +config.screenRatio;
@@ -314,15 +488,14 @@ async function _setupFrontend(): Promise<{ wsUrl: string, remoteHttpBase: string
     }
 
     console.logDiag(`ws-url:${wsUrl}`);
-    console.logD(`fill-screen:${fill}`);
-    console.logD(`screen-ratio:${ratio}`);
+    console.logDebug(`fill-screen:${fill}`);
+    console.logDebug(`screen-ratio:${ratio}`);
 
     _setupGameWindow(fill, ratio);
 
 
     return { wsUrl, remoteHttpBase, gamePrimaryName }
 }
-
 
 function _setupGameWindow(fillScreen: boolean, screenRatio: number) {
     // window.addEventListener('resize', () => {
@@ -389,3 +562,5 @@ function getParameterByName(name: string, url = window.location.href) {
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
+
+

@@ -48,7 +48,7 @@ export async function init(args: args) {
 
     await run("npm init -y", "Initializing npm..");
     await run("npm i typescript -g", "Installing Typescript..");
-    await run("npm i @frakas/api@0.1.8", "Installing @frakas/api@0.1.8 ..");
+    await run("npm i @frakas/api@0.1.9", "Installing @frakas/api@0.1.9 ..");
     await run("npm i babylonjs babylonjs-gui babylonjs-loaders", "Installing Bobaylonjs ..");
     await run("npm i webpack webpack-cli", "Installing Webpack ..");
     await run("npm i rxjs", "installing reactive extensions..");
@@ -81,8 +81,10 @@ export async function init(args: args) {
     if (!args.dryRun) {
         let rawdata = fs.readFileSync('package.json').toString();
         let packageJson = JSON.parse(rawdata);
-        packageJson.scripts["build"] = "npx webpack";
-        packageJson.scripts["run"] = "node server/node.bundle.main.js -o";
+        if (!packageJson.scripts) packageJson.scripts = {};
+        packageJson.scripts["build"] = "frakas build";
+        packageJson.scripts["run"] = "frakas up";
+        packageJson.scripts["start"] = "frakas serve";
         var packageStr = JSON.stringify(packageJson, null, 2);
         fs.writeFileSync('package.json', packageStr)
     }
@@ -239,7 +241,7 @@ import { LogLevel } from "@frakas/api/utils/LogLevel";
 import { filter, tap } from "rxjs";
 
 // Create backend and receive api for calling frontend
-var api = await createBackend({ loglevel: LogLevel.info });
+var api = (await createBackend({ loglevel: LogLevel.info }))!!;
 
 // keep track of entered players
 var playerColors: { [playerPosition: number]: Color3 | undefined } = {};

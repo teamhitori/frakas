@@ -19,16 +19,13 @@ export class FrontendSocket {
     this._container = new FrontendContainer(this._assetsRoot)
 
     this._init();
-
   }
 
   private async _init() {
     // Create WebSocket connection.
-    console.logD(`Connecting to: ${this._socketBase}`);
+    console.logDebug(`Connecting to: ${this._socketBase}`);
 
     this._socket = new WebSocket(`${this._socketBase}`);
-
-
 
     // Connection opened
     this._socket.addEventListener('open', event => {
@@ -62,7 +59,7 @@ export class FrontendSocket {
 
       switch (doc.topic) {
         case Topic.ping:
-          console.logD(doc);
+          console.logDebug(doc);
           break;
         case Topic.privateEvent:
           this._privateEvent(doc);

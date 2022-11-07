@@ -57,7 +57,7 @@ export class BackendHttp {
 
         var config = getFrakasJson();
 
-        console.logD("frakas.config, contents: ", config);
+        console.logDebug("frakas.config, contents: ", config);
 
         if (request && response) {
 
@@ -111,7 +111,7 @@ export class BackendHttp {
             switch (socDoc.topic) {
                 case Topic.connect:
                     httpDoc.connectionId = uuidv4();
-                    console.logD(`New Connection: ${httpDoc.connectionId}`)
+                    console.logDebug(`New Connection: ${httpDoc.connectionId}`)
                     this._connections[httpDoc.connectionId] = {
                         idleCounter: 2,
                         docs: []
@@ -121,15 +121,15 @@ export class BackendHttp {
                     this._startPrivateEvent(httpDoc.connectionId, socDoc);
                     break;
                 case Topic.ping:
-                    console.logD(`Ping:[${httpDoc.connectionId}, ${socDoc.content}]`);
+                    console.logDebug(`Ping:[${httpDoc.connectionId}, ${socDoc.content}]`);
                     this._connections[httpDoc.connectionId].docs.push(<ISocketDocument>{ topic: Topic.ping, content: `Pong:[${socDoc.content}]` });
                     break;
                 case Topic.playerEnter:
-                     console.logD(`Topic.playerEnter: ${httpDoc.connectionId}`);
+                     console.logDebug(`Topic.playerEnter: ${httpDoc.connectionId}`);
                     this._playerEnter(httpDoc.connectionId, socDoc);
                     break;
                 case Topic.playerExit:
-                    console.logD(`Topic.playerExit: ${httpDoc.connectionId}`);
+                    console.logDebug(`Topic.playerExit: ${httpDoc.connectionId}`);
                     this._playerExit(httpDoc.connectionId);
                     break;
                 case Topic.playerEvent:
@@ -154,10 +154,6 @@ export class BackendHttp {
     private _sendResponse(connectionId: string, response: express.Response<any, Record<string, any>>) {
         var docs = this._connections[connectionId].docs;
 
-        // if(docs.length) {
-        //     console.log(`Send Response: ${connectionId}`, docs)
-        // }
-
         response.setHeader('Content-Type', 'application/json');
         response.end(JSON.stringify(docs));
 
@@ -166,7 +162,7 @@ export class BackendHttp {
 
     private _startGame(connectionId: string, request: ISocketDocument) {
         try {
-            console.logD(`:StartGame called. gamePrimaryName:${request.gamePrimaryName}, connectionId: ${connectionId}`);
+            console.logDebug(`:StartGame called. gamePrimaryName:${request.gamePrimaryName}, connectionId: ${connectionId}`);
 
             this._container?.startGame.call(this._container);
 
@@ -180,10 +176,10 @@ export class BackendHttp {
                     },
                     error: ex => {
                         console.logE(ex);
-                        console.logD(`Error Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
+                        console.logDebug(`Error Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     },
                     complete: () => {
-                        console.logD(`Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
+                        console.logDebug(`Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     }
                 });
 
@@ -197,7 +193,7 @@ export class BackendHttp {
     private _startPrivateEvent(connectionId: string, request: ISocketDocument) {
         try {
 
-            console.logD(`:StartPlayerEvent called.  gamePrimaryName:${request.gamePrimaryName}, connectionId:${connectionId}`);
+            console.logDebug(`:StartPlayerEvent called.  gamePrimaryName:${request.gamePrimaryName}, connectionId:${connectionId}`);
 
             return this._container?.sendToPlayerObservable.call(this._container)
                 .pipe(filter(message => {
@@ -206,16 +202,16 @@ export class BackendHttp {
                 }))
                 .subscribe({
                     next: message => {
-                        console.logD(`_privateEvent: ${connectionId}`, message.state, this._connections[connectionId]);
+                        console.logDebug(`_privateEvent: ${connectionId}`, message.state, this._connections[connectionId]);
                         var contentStr = JSON.stringify(message.state);
                         this._connections[connectionId]?.docs.push(<ISocketDocument>{ topic: Topic.privateEvent, content: contentStr });
                     },
                     error: ex => {
                         console.logE(ex);
-                        console.logD(`Error User event Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
+                        console.logDebug(`Error User event Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     },
                     complete: () => {
-                        console.logD(`User event Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
+                        console.logDebug(`User event Loop Ending, gamePrimaryName:${request.gamePrimaryName}`);
                     }
                 });
 
@@ -237,7 +233,7 @@ export class BackendHttp {
 
     private _playerExit(connectionId: string) {
         try {
-            console.logD(`:UserExit called. connectionId:${connectionId}`);
+            console.logDebug(`:UserExit called. connectionId:${connectionId}`);
 
             this._container?.playerExit.call(
                 this._container,

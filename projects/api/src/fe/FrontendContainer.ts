@@ -1,35 +1,23 @@
 import { FrontendTopic, IFrontendApi } from "../public";
-import { FrontendSocket as FrontendSocket } from "./FrontendSocket";
 import { Observable, Subject } from 'rxjs';
-import { bufferTime } from 'rxjs/operators';
-import { IPlayerEventWrapper } from "../documents/IPlayerEventWrapper";
 import { LogLevel } from "../utils/LogLevel";
-import { Topic } from "../documents/Topic";
-
-// import 'bootstrap/dist/css/bootstrap.min.css';
-// import 'frakas/main.css'
 
 export class FrontendContainer {
 
     public playerEntered = false;
     private _onPlayerEnterEvent: Promise<void>;
-    private _onGameStopEvent: Promise<void>;
     private _onFrontendEvent: Subject<{topic: FrontendTopic, state: any | undefined}> = new Subject();
     private _notifyPlayerEvent: Subject<any> = new Subject<any>();
     private _frontendApi: IFrontendApi;
 
     constructor(assetsRoot: string) {
 
-        console.logD(`create playerContainer`);
+        console.logDebug(`create playerContainer`);
 
         var playerEnter: () => void;
 
         this._onPlayerEnterEvent = new Promise<void>((resolve) => {
             playerEnter = resolve;
-        });
-
-        this._onGameStopEvent = new Promise<void>((resolve) => {
-            this.onGameStop = resolve;
         });
 
         this._frontendApi = <IFrontendApi>{
@@ -58,9 +46,14 @@ export class FrontendContainer {
             receiveEvent: () => {
                 return this._onFrontendEvent;
             },
-            assetsRoot: assetsRoot
-        };
+            assetsRoot: assetsRoot,
+            dispose: () => {
+                console.logDebug(`dispose frontendApi`);
 
+                this._onFrontendEvent.complete();
+                this._notifyPlayerEvent.complete();
+            }
+        };
     }
 
     public getFrontendApi(): IFrontendApi {
@@ -94,7 +87,7 @@ export class FrontendContainer {
 
 
     public onGameStop() {
-        console.logD("***")
+        console.logDebug("***")
     }
 
     public playerEventObservable(): Observable<any> {

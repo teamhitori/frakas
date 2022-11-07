@@ -32,7 +32,7 @@ export class BackendSocket {
         try {
             var config = getFrakasJson();
 
-            console.logD("frakas.config, contents: ", config);
+            console.logDebug("frakas.config, contents: ", config);
 
             if(isNaN(+config.webPort)){
                 console.logE(chalk.red("webPort not set to valid number in frakas.json, exiting"));
@@ -46,14 +46,14 @@ export class BackendSocket {
             });
 
             if(!this._noHost) {
-                console.logD("Creating localhost")
+                console.logDebug("Creating localhost")
                 var app = await createLocalHost(this._remoteHost);
                 server.on('request', app)
             }
 
             server.on('connect', (req, clientSocket, head) => {
                 // Connect to an origin server
-                console.logD(`Connect event http://${req.url}`);
+                console.logDebug(`Connect event http://${req.url}`);
             });
 
             server.on('stream', (stream, headers) => {
@@ -104,7 +104,7 @@ export class BackendSocket {
 
                     ws.on('close', (event) => {
 
-                        console.logD(`Close Event connectionId:${connectionId}`, event);
+                        console.logDebug(`Close Event connectionId:${connectionId}`, event);
 
                         this._playerExit(connectionId, <ISocketDocument>{})
 
@@ -127,7 +127,7 @@ export class BackendSocket {
 
     private _startGame(connectionId: string, ws: WebSocket) {
         try {
-            console.logD(`:StartGame called connectionId: ${connectionId}`);
+            console.logDebug(`:StartGame called connectionId: ${connectionId}`);
 
             this._container?.startGame.call(this._container);
 
@@ -140,10 +140,10 @@ export class BackendSocket {
                     },
                     error: ex => {
                         console.logE(ex);
-                        console.logD(`Error Loop Ending`);
+                        console.logDebug(`Error Loop Ending`);
                     },
                     complete: () => {
-                        console.logD(`Loop Ending`);
+                        console.logDebug(`Loop Ending`);
                     }
                 });
 
@@ -171,10 +171,10 @@ export class BackendSocket {
                     },
                     error: ex => {
                         console.logE(ex);
-                        console.logD(`Error User event Loop Ending`);
+                        console.logDebug(`Error User event Loop Ending`);
                     },
                     complete: () => {
-                        console.logD(`User event Loop Ending`);
+                        console.logDebug(`User event Loop Ending`);
                     }
                 });
 
@@ -196,7 +196,7 @@ export class BackendSocket {
 
     private _playerExit(connectionId: string, request: ISocketDocument) {
         try {
-            console.logI(`:UserExit called. connectionId:${connectionId}, gamePrimaryName:${request.gamePrimaryName}`);
+            console.logDebug(`:UserExit called. connectionId:${connectionId}, gamePrimaryName:${request.gamePrimaryName}`);
 
             this._container?.playerExit.call(
                 this._container,
@@ -216,7 +216,7 @@ export class BackendSocket {
     private _playerEventIn(connectionId: string, request: ISocketDocument) {
         try {
 
-            console.logD("BackendSocket._playerEventIn called", connectionId, request);
+            console.logDiag("BackendSocket._playerEventIn called", connectionId, request);
             this._container?.playerEvent.call(this._container, connectionId, request.content);
 
         } catch (ex: any) {

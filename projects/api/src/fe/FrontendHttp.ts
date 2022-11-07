@@ -18,7 +18,7 @@ export class FrontendHttp {
   constructor(private _gamePrimaryName: string, private _remoteBackendUrl: string, assetsRoot: string) {
 
     // Create Http Connection.
-    console.logD(`Connecting to http backend: ${_remoteBackendUrl}`);
+    console.logDebug(`Connecting to http backend: ${_remoteBackendUrl}`);
 
     this._container = new FrontendContainer(assetsRoot);
 
@@ -37,7 +37,7 @@ export class FrontendHttp {
 
     var connectionId = conectionRes[0].content;
 
-    console.logD("connectionId: ", connectionId);
+    console.logDebug("connectionId: ", connectionId);
 
     this._queueSendEvent
       .pipe(

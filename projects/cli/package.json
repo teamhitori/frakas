@@ -1,6 +1,6 @@
 {
   "name": "@frakas/cli",
-  "version": "0.0.86",
+  "version": "0.0.88",
   "description": "Frakas multiplayer framework CLI",
   "main": "app.js",
   "files": [

@@ -38,6 +38,14 @@ export class BackendContainer {
             },
             receiveEvent: () => {
                 return this._onEvent;
+            },
+            dispose: () => {
+
+                console.logDebug(`dispose backendApi`);
+
+                this._sendToPlayerObservable?.complete();
+                this._sendToAllObservable?.complete();
+                this._onEvent.complete();
             }
         };
     }
@@ -105,13 +113,13 @@ export class BackendContainer {
                     if (connectionId == connectionIdIn) {
                         existingUser = true;
                         nextPos = this._playerList[connectionIdIn];
-                        console.logD(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
+                        console.logDebug(`## Existing USER ${connectionIdIn}, pos: ${this._playerList[connectionIdIn]}`);
 
                     }
                 }
 
                 if (!existingUser) {
-                    console.logD(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
+                    console.logDebug(`### NEW USER [${connectionIdIn}]: pos: ${nextPos}`);
                     this._nextPos++;
                 }
 
@@ -145,7 +153,7 @@ export class BackendContainer {
                             playerCount++;
                         }
 
-                        console.logD(`Removing existing connection ${connectionIdIn}, new user count: ${playerCount}`);
+                        console.logDebug(`Removing existing connection ${connectionIdIn}, new user count: ${playerCount}`);
                     }
                 }
 
